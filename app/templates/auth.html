@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden" x-data="{ tab: 'login' }">
+    <div class="flex border-b border-gray-200">
+        <button @click="tab = 'login'" :class="{'border-indigo-500 text-indigo-600': tab === 'login', 'border-transparent text-gray-500 hover:text-gray-700': tab !== 'login'}" class="w-1/2 py-4 text-center border-b-2 font-medium transition-colors duration-200">Login</button>
+        <button @click="tab = 'register'" :class="{'border-indigo-500 text-indigo-600': tab === 'register', 'border-transparent text-gray-500 hover:text-gray-700': tab !== 'register'}" class="w-1/2 py-4 text-center border-b-2 font-medium transition-colors duration-200">Register</button>
+    </div>
+
+    <div class="p-8">
+        <!-- LOGIN FORM -->
+        <form x-show="tab === 'login'" action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-6">
+            <input type="hidden" name="action" value="login">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" name="email" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Sign in
+            </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form x-show="tab === 'register'" style="display: none;" action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-4">
+            <input type="hidden" name="action" value="register">
+            <div class="flex space-x-4">
+                <div class="w-1/2">
+                    <label class="block text-sm font-medium text-gray-700">First Name</label>
+                    <input type="text" name="first_name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div class="w-1/2">
+                    <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                    <input type="text" name="last_name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">I am a:</label>
+                <div class="flex space-x-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="user_type" value="student" checked class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-2 text-sm text-gray-700">Student / Candidate</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="user_type" value="hr" class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-2 text-sm text-gray-700">HR / Recruiter</span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Create Account
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

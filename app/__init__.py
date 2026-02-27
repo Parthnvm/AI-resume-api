@@ -1,0 +1,45 @@
+import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_bcrypt import Bcrypt
+
+# Initialize extensions
+db = SQLAlchemy()
+login_manager = LoginManager()
+bcrypt = Bcrypt()
+
+def create_app():
+    app = Flask(__name__)
+    
+    # Configuration
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-super-secret-key')
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///resume_shortlister.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['UPLOAD_FOLDER'] = os.path.abspath('resumes')
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
+    
+    # Init extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    bcrypt.init_app(app)
+    
+    login_manager.login_view = 'auth_bp.auth'
+    login_manager.login_message_category = 'info'
+    
+    # Register Blueprints
+    from app.routes import auth_bp, student_bp, hr_bp
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(student_bp, url_prefix='/student')
+    app.register_blueprint(hr_bp, url_prefix='/hr')
+    
+    # Create DB tables
+    with app.app_context():
+        db.create_all()
+        
+    return app
+
+@login_manager.user_loader
+def load_user(user_id):
+    from app.models import User
+    return User.query.get(user_id)

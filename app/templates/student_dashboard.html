@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <!-- Upload Section -->
+    <div class="md:col-span-1">
+        <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-500"></i>Upload Resume</h2>
+            <form action="{{ url_for('student_bp.upload') }}" method="POST" enctype="multipart/form-data">
+                
+                <!-- DRAG AND DROP ZONE -->
+                <div id="drop-zone" class="mt-2 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 transition hover:bg-gray-50 bg-white" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                    <div class="text-center">
+                        <i class="fa-regular fa-file-pdf text-4xl text-gray-300 mb-4 transition-colors" id="upload-icon"></i>
+                        <div class="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                            <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500">
+                                <span>Upload a file</span>
+                                <input id="file-upload" name="resume" type="file" class="sr-only" accept=".pdf" onchange="handleFileSelect(event)">
+                            </label>
+                            <p class="pl-1">or drag and drop</p>
+                        </div>
+                        <p class="text-xs leading-5 text-gray-500 mt-2" id="file-name-display">PDF up to 10MB</p>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                        Submit Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload History Section -->
+    <div class="md:col-span-2">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-medium leading-6 text-gray-900"><i class="fa-solid fa-clock-rotate-left mr-2 text-gray-400"></i>Application History</h3>
+            </div>
+            
+            {% if uploads %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-white">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for upload in uploads %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center">
+                                <i class="fa-regular fa-file-pdf text-red-500 mr-2"></i> {{ upload.original_filename }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ upload.upload_date.strftime('%Y-%m-%d %H:%M') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if upload.status == 'pending' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Under Review</span>
+                                {% elif upload.status == 'analyzed' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Analyzed</span>
+                                {% elif upload.status == 'shortlisted' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Shortlisted</span>
+                                {% elif upload.status == 'rejected' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Not Selected</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <!-- NEW: View Resume Button for Students -->
+                                <a href="{{ url_for('hr_bp.view_resume', upload_id=upload.id) }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded transition inline-flex items-center">
+                                    <i class="fa-solid fa-eye mr-1"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-8 text-center text-gray-500 flex flex-col items-center">
+                <i class="fa-solid fa-inbox text-4xl mb-3 text-gray-300"></i>
+                <p>No applications submitted yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Drag and Drop JavaScript -->
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-upload');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const uploadIcon = document.getElementById('upload-icon');
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileName();
+        }
+    }
+
+    function handleFileSelect(e) {
+        updateFileName();
+    }
+
+    function updateFileName() {
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.textContent = "Selected: " + fileInput.files[0].name;
+            fileNameDisplay.classList.add('text-indigo-600', 'font-bold');
+            uploadIcon.classList.remove('text-gray-300');
+            uploadIcon.classList.add('text-indigo-500');
+        }
+    }
+</script>
+{% endblock %}
