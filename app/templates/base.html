@@ -1,33 +1,162 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))" :class="{ 'dark': darkMode }">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Resume Shortlister</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            900: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- AlpineJS for interactive UI components -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        /* Custom Utilities and Animations */
+        body {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Premium Deep Dark Mode Overrides --- */
+        html.dark body {
+            background-color: #0c111d !important; /* Deep rich navy/slate */
+            background-image: radial-gradient(#182030 1px, transparent 1px) !important;
+        }
+        .dark .glass-nav {
+            background: rgba(12, 17, 29, 0.85);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Modals, Cards, and Surfaces */
+        .dark .bg-white { 
+            background-color: #1a2235 !important; /* Soft elevated blue-slate */
+            border-color: #334155 !important; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+        }
+        .dark .bg-slate-50, .dark .bg-slate-100 { 
+            background-color: #232d42 !important; 
+            border-color: #334155 !important; 
+        }
+        
+        /* Text Contrast - softened for less eye strain */
+        .dark .text-slate-900, .dark .text-slate-800 { color: #f1f5f9 !important; }
+        .dark .text-slate-700, .dark .text-slate-600 { color: #cbd5e1 !important; }
+        .dark .text-slate-500, .dark .text-slate-400 { color: #94a3b8 !important; }
+        
+        /* Borders */
+        .dark .border-slate-300, .dark .border-slate-200, .dark .border-slate-100 { border-color: #334155 !important; }
+        .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        .dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #334155 !important;
+        }
+
+        /* Inputs & Tables */
+        .dark input, .dark textarea, .dark select { 
+            background-color: #1a2235 !important; 
+            color: #f1f5f9 !important; 
+            border-color: #475569 !important; 
+        }
+        .dark input:focus, .dark textarea:focus, .dark select:focus {
+            border-color: #8b5cf6 !important;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important;
+        }
+        .dark th { background-color: #232d42 !important; color: #cbd5e1 !important; border-bottom: 1px solid #334155 !important; }
+        .dark tr.hover\:bg-slate-50\/60:hover, .dark tr.hover\:bg-slate-50\/50:hover { background-color: #2a3449 !important; }
+        
+        /* Colored Badges for Dark Themes - boosted saturation slightly */
+        .dark .bg-brand-50, .dark .bg-brand-100 { background-color: rgba(139, 92, 246, 0.2) !important; color: #ddd6fe !important; border-color: rgba(139, 92, 246, 0.4) !important; }
+        .dark .bg-blue-50, .dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.2) !important; color: #bfdbfe !important; border-color: rgba(59, 130, 246, 0.4) !important; }
+        .dark .bg-amber-50, .dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2) !important; color: #fde68a !important; border-color: rgba(245, 158, 11, 0.4) !important; }
+        .dark .bg-emerald-50, .dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.2) !important; color: #a7f3d0 !important; border-color: rgba(16, 185, 129, 0.4) !important; }
+        .dark .bg-red-50, .dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.2) !important; color: #fecaca !important; border-color: rgba(239, 68, 68, 0.4) !important; }
+        
+    </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+<body class="min-h-screen font-sans text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#0c111d] antialiased flex flex-col transition-colors duration-300">
     
     <!-- Navigation -->
-    <nav class="bg-indigo-600 text-white shadow-lg">
+    <nav class="glass-nav sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo area -->
                 <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-robot text-2xl"></i>
-                    <span class="font-bold text-xl tracking-tight">AI Resume Shortlister</span>
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                        <i class="fa-solid fa-robot text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-slate-800 dark:text-slate-200 hidden sm:block">Apex<span class="text-brand-600 dark:text-brand-400">Hire</span> API</span>
                 </div>
+                <!-- User area -->
                 <div class="flex items-center space-x-4">
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button @click="darkMode = !darkMode" class="p-2 rounded-full text-slate-500 hover:text-brand-500 dark:text-slate-400 dark:hover:text-amber-400 transition-colors focus:outline-none" title="Toggle Dark Mode">
+                        <i class="fa-solid fa-moon text-lg" x-show="!darkMode"></i>
+                        <i class="fa-solid fa-sun text-lg" x-show="darkMode" style="display: none;"></i>
+                    </button>
                     {% if current_user.is_authenticated %}
-                        <span class="text-indigo-100 text-sm">
-                            <i class="fa-solid fa-user-circle mr-1"></i> {{ current_user.first_name }} ({{ current_user.user_type | title }})
-                        </span>
-                        <a href="{{ url_for('auth_bp.logout') }}" class="bg-indigo-700 hover:bg-indigo-800 px-3 py-2 rounded-md text-sm font-medium transition">
-                            Logout
+                        <div class="flex items-center bg-slate-100/80 dark:bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+                            <div class="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-300 flex items-center justify-center font-bold text-xs mr-2">
+                                {{ current_user.first_name[0] }}{{ current_user.last_name[0] }}
+                            </div>
+                            <div class="flex flex-col text-left mr-3">
+                                <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-tight">{{ current_user.first_name }}</span>
+                                <span class="text-[10px] text-slate-500 uppercase font-medium leading-none">{{ current_user.user_type }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if current_user.user_type == 'hr' %}
+                        <button onclick="navigator.clipboard.writeText('{{ current_user.api_key }}'); alert('API Key copied to clipboard!');"
+                                class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-full font-medium hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors tooltip"
+                                title="Copy programmatic API Key (Bearer Token)">
+                            <i class="fa-solid fa-key mr-1.5 text-brand-500"></i> <span class="hidden md:inline">API Key</span>
+                        </button>
+                        {% endif %}
+
+                        <a href="{{ url_for('auth_bp.logout') }}" class="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 p-2 rounded-full transition-colors" title="Logout">
+                            <i class="fa-solid fa-right-from-bracket text-lg"></i>
                         </a>
                     {% endif %}
                 </div>
@@ -35,13 +164,30 @@
         </div>
     </nav>
 
-    <!-- Flash Messages -->
-    <div class="max-w-4xl mx-auto mt-4 px-4">
+    <!-- Flash Messages (Floating Toasts) -->
+    <div class="fixed top-20 right-4 z-50 flex flex-col space-y-2 pointer-events-none w-full max-w-sm">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="p-4 mb-4 text-sm rounded-lg {% if category == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}" role="alert">
-                        <span class="font-medium">{{ message }}</span>
+                    <div class="pointer-events-auto p-4 rounded-xl shadow-lg border backdrop-blur-md fade-in flex items-start 
+                        {% if category == 'error' %}bg-red-50/90 border-red-200 text-red-800
+                        {% else %}bg-emerald-50/90 border-emerald-200 text-emerald-800{% endif %}" 
+                        role="alert"
+                        x-data="{ show: true }" 
+                        x-show="show" 
+                        x-init="setTimeout(() => show = false, 5000)">
+                        
+                        <div class="flex-shrink-0 mr-3">
+                            {% if category == 'error' %}
+                                <i class="fa-solid fa-circle-exclamation text-red-500 text-lg"></i>
+                            {% else %}
+                                <i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                        <button @click="show = false" class="ml-4 opacity-70 hover:opacity-100 transition-opacity">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                     </div>
                 {% endfor %}
             {% endif %}
@@ -49,9 +195,13 @@
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full fade-in dark:text-slate-200">
         {% block content %}{% endblock %}
     </main>
+
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p>&copy; {{ current_user.created_at.year if current_user.is_authenticated else '2025' }} ApexHire API. All rights reserved.</p>
+    </footer>
 
 </body>
 </html>

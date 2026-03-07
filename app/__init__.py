@@ -27,6 +27,22 @@ def create_app():
     login_manager.login_view = 'auth_bp.auth'
     login_manager.login_message_category = 'info'
     
+    @login_manager.user_loader
+    def load_user(user_id):
+        from app.models import User
+        return User.query.get(user_id)
+        
+    @login_manager.request_loader
+    def load_user_from_request(request):
+        api_key = request.headers.get('Authorization')
+        if api_key:
+            api_key = api_key.replace('Bearer ', '', 1)
+            from app.models import User
+            user = User.query.filter_by(api_key=api_key).first()
+            if user:
+                return user
+        return None
+    
     # Register Blueprints
     from app.routes import auth_bp, student_bp, hr_bp
     app.register_blueprint(auth_bp)
@@ -39,7 +55,3 @@ def create_app():
         
     return app
 
-@login_manager.user_loader
-def load_user(user_id):
-    from app.models import User
-    return User.query.get(user_id)

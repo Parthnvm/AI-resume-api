@@ -7,3 +7,5 @@ openai==1.13.3
 python-dotenv==1.0.1
 pydantic==2.6.3
 werkzeug==3.0.1
+
+pip install flask flask-sqlalchemy flask-login flask-bcrypt pypdf openai python-dotenv pydantic werkzeug

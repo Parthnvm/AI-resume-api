@@ -1,67 +1,162 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden" x-data="{ tab: 'login' }">
-    <div class="flex border-b border-gray-200">
-        <button @click="tab = 'login'" :class="{'border-indigo-500 text-indigo-600': tab === 'login', 'border-transparent text-gray-500 hover:text-gray-700': tab !== 'login'}" class="w-1/2 py-4 text-center border-b-2 font-medium transition-colors duration-200">Login</button>
-        <button @click="tab = 'register'" :class="{'border-indigo-500 text-indigo-600': tab === 'register', 'border-transparent text-gray-500 hover:text-gray-700': tab !== 'register'}" class="w-1/2 py-4 text-center border-b-2 font-medium transition-colors duration-200">Register</button>
+<div class="max-w-4xl mx-auto flex flex-col md:flex-row bg-white/80 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden fade-in min-h-[500px]">
+    
+    <!-- Branding Side -->
+    <div class="md:w-5/12 bg-gradient-to-br from-brand-600 to-indigo-900 p-8 text-white flex flex-col justify-between relative overflow-hidden">
+        <!-- Abstract Shapes -->
+        <div class="absolute -top-24 -left-24 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="absolute -bottom-24 -right-24 w-64 h-64 bg-brand-400/20 rounded-full blur-3xl"></div>
+        
+        <div class="relative z-10">
+            <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-6">
+                <i class="fa-solid fa-robot text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-4">ApexHire</h2>
+            <p class="text-indigo-100 mb-6 text-sm leading-relaxed">The next generation AI-powered platform connecting top talent with industry-leading companies through intelligent matching.</p>
+        </div>
+        
+        <div class="relative z-10 text-xs text-indigo-200">
+            <p><i class="fa-solid fa-shield-halved mr-1"></i> Secure &amp; encrypted ecosystem</p>
+        </div>
     </div>
 
-    <div class="p-8">
-        <!-- LOGIN FORM -->
-        <form x-show="tab === 'login'" action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-6">
-            <input type="hidden" name="action" value="login">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Email Address</label>
-                <input type="email" name="email" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+    <!-- Form Side -->
+    <div class="md:w-7/12 p-8 sm:p-12 bg-white dark:bg-slate-800" x-data="{ tab: 'login' }">
+        
+        <!-- Tab Switcher -->
+        <div class="flex p-1 bg-slate-100 dark:bg-slate-700 rounded-lg mb-8 relative">
+            <div class="absolute h-full w-1/2 p-1 transition-all duration-300 ease-out top-0 left-0"
+                 :class="{'translate-x-0': tab === 'login', 'translate-x-full': tab === 'register'}">
+                <div class="w-full h-full bg-white dark:bg-slate-600 rounded-md shadow-sm"></div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input type="password" name="password" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-            </div>
-            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Sign in
+            <button @click="tab = 'login'" 
+                    class="relative z-10 w-1/2 py-2 text-sm font-semibold transition-colors duration-200"
+                    :class="{'text-slate-800 dark:text-slate-100': tab === 'login', 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200': tab !== 'login'}">
+                Sign In
             </button>
-        </form>
-
-        <!-- REGISTER FORM -->
-        <form x-show="tab === 'register'" style="display: none;" action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-4">
-            <input type="hidden" name="action" value="register">
-            <div class="flex space-x-4">
-                <div class="w-1/2">
-                    <label class="block text-sm font-medium text-gray-700">First Name</label>
-                    <input type="text" name="first_name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                </div>
-                <div class="w-1/2">
-                    <label class="block text-sm font-medium text-gray-700">Last Name</label>
-                    <input type="text" name="last_name" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Email Address</label>
-                <input type="email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <input type="password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">I am a:</label>
-                <div class="flex space-x-4">
-                    <label class="flex items-center">
-                        <input type="radio" name="user_type" value="student" checked class="text-indigo-600 focus:ring-indigo-500">
-                        <span class="ml-2 text-sm text-gray-700">Student / Candidate</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="user_type" value="hr" class="text-indigo-600 focus:ring-indigo-500">
-                        <span class="ml-2 text-sm text-gray-700">HR / Recruiter</span>
-                    </label>
-                </div>
-            </div>
-            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button @click="tab = 'register'" 
+                    class="relative z-10 w-1/2 py-2 text-sm font-semibold transition-colors duration-200"
+                    :class="{'text-slate-800 dark:text-slate-100': tab === 'register', 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200': tab !== 'register'}">
                 Create Account
             </button>
-        </form>
+        </div>
+
+        <div class="relative min-h-[300px]">
+            <!-- LOGIN FORM -->
+            <form x-show="tab === 'login'"
+                  x-transition:enter="transition ease-out duration-300 transform"
+                  x-transition:enter-start="opacity-0 translate-x-4"
+                  x-transition:enter-end="opacity-100 translate-x-0"
+                  x-transition:leave="transition ease-in duration-200 absolute w-full top-0 left-0"
+                  x-transition:leave-start="opacity-100 translate-x-0"
+                  x-transition:leave-end="opacity-0 -translate-x-4"
+                  action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-5">
+                
+                <input type="hidden" name="action" value="login">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-regular fa-envelope text-slate-400 dark:text-slate-500"></i>
+                        </div>
+                        <input type="email" name="email" required placeholder="you@company.com" 
+                            class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm placeholder-slate-400 dark:placeholder-slate-500 text-slate-800 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
+                        <a href="#" class="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 font-medium">Forgot password?</a>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-lock text-slate-400 dark:text-slate-500"></i>
+                        </div>
+                        <input type="password" name="password" required placeholder="••••••••" 
+                            class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm placeholder-slate-400 dark:placeholder-slate-500 text-slate-800 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full mt-2 flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm shadow-brand-500/30 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all active:scale-[0.98]">
+                    Sign In to Dashboard <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+                </button>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form x-show="tab === 'register'" style="display: none;"
+                  x-transition:enter="transition ease-out duration-300 transform"
+                  x-transition:enter-start="opacity-0 translate-x-4"
+                  x-transition:enter-end="opacity-100 translate-x-0"
+                  x-transition:leave="transition ease-in duration-200 absolute w-full top-0 left-0"
+                  x-transition:leave-start="opacity-100 translate-x-0"
+                  x-transition:leave-end="opacity-0 -translate-x-4"
+                  action="{{ url_for('auth_bp.auth') }}" method="POST" class="space-y-5">
+                
+                <input type="hidden" name="action" value="register">
+                
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">First Name</label>
+                        <input type="text" name="first_name" required placeholder="John" 
+                            class="block w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Last Name</label>
+                        <input type="text" name="last_name" required placeholder="Doe" 
+                            class="block w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                    <input type="email" name="email" required placeholder="you@company.com" 
+                        class="block w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" name="password" required placeholder="Create a strong password" 
+                        class="block w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm shadow-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                </div>
+                
+                <!-- Role Selector -->
+                <div x-data="{ role: 'student' }" class="pt-2">
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Account Type</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="relative flex cursor-pointer rounded-lg border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 shadow-sm hover:border-brand-200 dark:hover:border-brand-500 focus:outline-none items-center"
+                               :class="{'border-brand-500 ring-1 ring-brand-500 bg-brand-50/10 dark:bg-brand-900/20': role === 'student', 'border-slate-200 dark:border-slate-600': role !== 'student'}">
+                            <input type="radio" name="user_type" value="student" class="sr-only" x-model="role" checked>
+                            <span class="flex flex-1">
+                                <span class="flex flex-col">
+                                    <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100"><i class="fa-solid fa-graduation-cap text-brand-500 mr-2"></i>Candidate</span>
+                                    <span class="mt-1 flex items-center text-xs text-slate-500 dark:text-slate-400">Find opportunities</span>
+                                </span>
+                            </span>
+                            <i class="fa-solid fa-circle-check text-brand-600 text-lg absolute -top-2 -right-2 bg-white dark:bg-slate-700 rounded-full" x-show="role === 'student'"></i>
+                        </label>
+
+                        <label class="relative flex cursor-pointer rounded-lg border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 shadow-sm hover:border-brand-200 dark:hover:border-brand-500 focus:outline-none items-center"
+                               :class="{'border-brand-500 ring-1 ring-brand-500 bg-brand-50/10 dark:bg-brand-900/20': role === 'hr', 'border-slate-200 dark:border-slate-600': role !== 'hr'}">
+                            <input type="radio" name="user_type" value="hr" class="sr-only" x-model="role">
+                            <span class="flex flex-1">
+                                <span class="flex flex-col">
+                                    <span class="block text-sm font-semibold text-slate-900 dark:text-slate-100"><i class="fa-solid fa-building-user text-brand-500 mr-2"></i>Recruiter</span>
+                                    <span class="mt-1 flex items-center text-xs text-slate-500 dark:text-slate-400">Hire top talent</span>
+                                </span>
+                            </span>
+                            <i class="fa-solid fa-circle-check text-brand-600 text-lg absolute -top-2 -right-2 bg-white dark:bg-slate-700 rounded-full" x-show="role === 'hr'" style="display: none;"></i>
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full mt-6 flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm shadow-brand-500/30 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all active:scale-[0.98]">
+                    Create Free Account
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

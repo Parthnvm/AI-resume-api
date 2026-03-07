@@ -16,13 +16,24 @@ except ImportError:
 # Get the absolute path to the root directory
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
-def extract_text_from_pdf(pdf_path: str) -> str:
+import docx
+
+def extract_text(file_path: str) -> str:
+    ext = file_path.lower().split('.')[-1]
+    text = ""
     try:
-        reader = PdfReader(pdf_path)
-        text = "".join(page.extract_text() + "\n" for page in reader.pages)
+        if ext == 'pdf':
+            reader = PdfReader(file_path)
+            text = "".join(page.extract_text() + "\n" for page in reader.pages)
+        elif ext == 'docx':
+            doc = docx.Document(file_path)
+            text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+        elif ext == 'txt':
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
         return text
     except Exception as e:
-        print(f"Error reading PDF {pdf_path}: {e}")
+        print(f"Error reading file {file_path}: {e}")
         return ""
 
 def load_text_file(filename: str, default_content: str) -> str:

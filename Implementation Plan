@@ -1,0 +1,64 @@
+# Implementation Plan: Resume API Improvements
+
+## Goal Description
+
+The goal is to deeply improve the aesthetics of the application to look highly professional, premium, and modern, and to add new features to both the frontend interfaces and the backend API.
+
+## User Review Required
+
+> [!IMPORTANT]
+> Please review this plan to ensure the direction aligns with your expectations. Let me know if you want to focus more heavily on specific features or specific aesthetic styles (e.g., dark mode vs. light sleek mode).
+
+## Proposed Advanced API Features
+
+We will implement the following 5 advanced API features sequentially to elevate the backend to an enterprise-grade standard:
+
+### 1. Advanced Search, Filtering, and Pagination API
+
+- **Endpoint:** `GET /hr/api/candidates`
+- **Features:**
+  - Pagination (`?page=1&limit=20`) to handle large datasets efficiently.
+  - Full-text search (`?q=John`) for names/emails.
+  - Faceted filtering (`?min_score=80&status=shortlisted`).
+- **Files to Modify:** `app/routes.py`, `app/models.py`, `app/templates/hr_dashboard.html` (to consume the new API using AlpineJS instead of rendering all rows via Jinja).
+
+### 2. True Programmatic Access (API Keys)
+
+- **Features:**
+  - Generate static API Keys for HR users to allow external ATS systems or headless scripts to push/pull resumes without browser sessions.
+  - Middleware to authenticate requests bearing an `x-api-key` header.
+- **Files to Modify:** `app/models.py` (add `api_key` to User), `app/routes.py` (add decorator/middleware).
+
+### 3. Asynchronous Batch Processing & Webhooks
+
+- **Features:**
+  - Endpoint to upload a `.zip` file of multiple resumes.
+  - Background task processing (using `threading` for simplicity without requiring Redis/Celery immediately, but structured to allow it) so the server isn't blocked.
+  - Basic webhook firing mechanism to simulate sending an HTTP POST to an external service when analysis completes.
+- **Files to Modify:** `app/routes.py` (new `/hr/api/batch_upload`), new `app/tasks.py` (for background jobs).
+
+### 4. Advanced Analytics & Insights Endpoints
+
+- **Features:**
+  - `GET /hr/api/analytics/trends`: Return time-series data of applications received per day/week.
+  - `GET /hr/api/analytics/skills`: Aggregate the most common "missing skills" across candidates to help refine job descriptions.
+- **Files to Modify:** `app/routes.py`.
+
+### 5. Multi-format Support (Docx & TXT Parsing)
+
+- **Features:**
+  - Expand the DocumentParser pipeline to gracefully accept `.docx` and `.txt` files alongside standard `.pdf`.
+- **Files to Modify:** `resume_screener_api.py`, `app/routes.py` (update allowed extensions).
+
+## Verification Plan
+
+### Automated Tests
+
+- The backend changes (filtering, pagination, API keys, batching) will be verifiable via `curl` or Postman.
+
+### Manual Verification
+
+1. Run `python run.py`.
+2. Visit the HR Dashboard to ensure the new Search/Pagination UI correctly hits the API endpoint and updates instantly.
+3. Test uploading a `.docx` file as a student.
+4. Execute a local `curl` command using a generated API Key to fetch top candidates programmatically.

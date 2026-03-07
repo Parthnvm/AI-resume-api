@@ -10,8 +10,8 @@ if __name__ == '__main__':
     os.makedirs('resumes', exist_ok=True)
     os.makedirs('results', exist_ok=True)
     
-    print("🚀 Starting Unified Resume Shortlister System...")
-    print("👉 Access the portal at: http://localhost:5000")
+    print("Starting Unified Resume Shortlister System...")
+    print("Access the portal at: http://localhost:5000")
     
     # Run a single unified server on port 5000
     app.run(host='0.0.0.0', port=5000, debug=True)

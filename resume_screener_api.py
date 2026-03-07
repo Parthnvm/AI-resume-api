@@ -37,6 +37,10 @@ class AnalysisResult(BaseModel):
     found_skills: List[str]
     missing_skills: List[str]
     status: str
+    phone: str = ""
+    email: str = ""
+    education: str = ""
+    experience_years: int = 0
 
 
 class DocumentParser:
@@ -143,6 +147,35 @@ class MatchingEngine:
         else:
             return f"Low match. The resume content differs significantly from the job description. Missing: {', '.join(missing_list)}."
 
+    def extract_contact_info(self) -> Tuple[str, str, str, int]:
+        email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', self.resume_raw)
+        email = email_match.group(0) if email_match else "Not found"
+        
+        # Phone: very basic check for 10 digits
+        phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', self.resume_raw)
+        phone = phone_match.group(0) if phone_match else "Not found"
+        
+        # Basic heuristic for education
+        lower_raw = self.resume_raw.lower()
+        edu = "Not specified"
+        if "master" in lower_raw or "m.s." in lower_raw or "ms" in lower_raw.split():
+            edu = "Master's Degree"
+        elif "bachelor" in lower_raw or "b.s." in lower_raw or "bs" in lower_raw.split() or "b.a" in lower_raw:
+            edu = "Bachelor's Degree"
+        elif "phd" in lower_raw or "ph.d" in lower_raw:
+            edu = "Ph.D."
+            
+        # Basic heuristic for experience
+        exp_years = 0
+        exp_matches = re.findall(r'(\d+)(?:\+)?\s+(?:years|yrs)', lower_raw)
+        if exp_matches:
+            try:
+                exp_years = max([int(y) for y in exp_matches])
+            except:
+                pass
+                
+        return email, phone, edu, exp_years
+
     def analyze(self) -> AnalysisResult:
         content_score = self.calculate_cosine_similarity()
         skill_score, matched, missing = self.calculate_skill_match()
@@ -152,6 +185,7 @@ class MatchingEngine:
 
         
         reasoning_text = self.generate_reasoning(final_score, matched, missing)
+        email, phone, edu, exp_years = self.extract_contact_info()
 
         return AnalysisResult(
             match_score=round(final_score * 100, 2),
@@ -160,7 +194,11 @@ class MatchingEngine:
             reasoning=reasoning_text,
             found_skills=list(matched),
             missing_skills=list(missing),
-            status="success"
+            status="success",
+            email=email,
+            phone=phone,
+            education=edu,
+            experience_years=exp_years
         )
 
 
