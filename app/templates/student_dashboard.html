@@ -1,416 +1,742 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 
 <div class="mb-8 fade-in">
-    <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Welcome back, {{ current_user.first_name }} 👋</h1>
-    <p class="text-slate-500 mt-2">Manage your job applications and review AI-driven resume insights.</p>
+  <h1
+    class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight"
+  >
+    Welcome back, {{ current_user.first_name }} 👋
+  </h1>
+  <p class="text-slate-500 dark:text-slate-400 mt-2">
+    Manage your job applications and review AI-driven resume insights.
+  </p>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in" style="animation-delay: 0.1s;">
-    <!-- Active Jobs Board -->
-    <div class="lg:col-span-3 mb-4">
-        <div class="bg-white rounded-2xl shadow-sm border border-brand-200 overflow-hidden relative group">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"></div>
-            <div class="px-6 py-5 border-b border-brand-100 bg-brand-50/50">
-                <h2 class="text-xl font-bold text-brand-900 flex items-center">
-                    <i class="fa-solid fa-briefcase text-brand-600 mr-3"></i> Open Positions
-                </h2>
-                <p class="text-sm text-brand-700 mt-1">Apply directly to these roles for instant AI review.</p>
+<div
+  class="grid grid-cols-1 lg:grid-cols-3 gap-8 fade-in"
+  style="animation-delay: 0.1s"
+>
+  <!-- Active Jobs Board -->
+  <div class="lg:col-span-3 mb-4">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-brand-200 dark:border-slate-700 overflow-hidden relative group"
+    >
+      <div
+        class="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110"
+      ></div>
+      <div
+        class="px-6 py-5 border-b border-brand-100 dark:border-slate-700 bg-brand-50/50 dark:bg-slate-700/40"
+      >
+        <h2
+          class="text-xl font-bold text-brand-900 dark:text-slate-100 flex items-center"
+        >
+          <i
+            class="fa-solid fa-briefcase text-brand-600 dark:text-brand-400 mr-3"
+          ></i>
+          Open Positions
+        </h2>
+        <p class="text-sm text-brand-700 dark:text-slate-400 mt-1">
+          Apply directly to these roles for instant AI review.
+        </p>
+      </div>
+
+      <div class="p-6">
+        {% if jobs %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% for job in jobs %}
+          <div
+            class="border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-brand-400 dark:hover:border-brand-500 hover:shadow-md transition-all group/card bg-white dark:bg-slate-800/80 relative"
+          >
+            <div
+              class="absolute top-4 right-4 text-slate-300 dark:text-slate-600 group-hover/card:text-brand-500 transition-colors"
+            >
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </div>
-            
-            <div class="p-6">
-                {% if jobs %}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {% for job in jobs %}
-                    <div class="border border-slate-200 rounded-xl p-5 hover:border-brand-400 hover:shadow-md transition-all group/card bg-white relative">
-                        <div class="absolute top-4 right-4 text-slate-300 group-hover/card:text-brand-500 transition-colors">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </div>
-                        <h3 class="font-bold text-slate-900 text-lg pr-8">{{ job.title }}</h3>
-                        <p class="text-sm text-slate-500 mt-2 line-clamp-2">{{ job.description }}</p>
-                        <div class="mt-4 flex items-center justify-between">
-                            <span class="text-xs font-medium text-slate-400"><i class="fa-regular fa-clock mr-1"></i> Posted {{ job.created_at.strftime('%b %d') }}</span>
-                            <!-- Button that triggers the upload modal with this job pre-selected -->
-                            <button onclick="applyForJob('{{ job.id }}', '{{ job.title }}')" class="text-sm font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors">
-                                Apply Now
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8">
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 text-slate-400 mb-3">
-                        <i class="fa-regular fa-face-frown text-xl"></i>
-                    </div>
-                    <h3 class="text-slate-800 font-medium">No open positions right now.</h3>
-                    <p class="text-sm text-slate-500">Check back later or upload a general resume below.</p>
-                </div>
-                {% endif %}
+            <h3
+              class="font-bold text-slate-900 dark:text-slate-100 text-lg pr-8"
+            >
+              {{ job.title }}
+            </h3>
+            <p
+              class="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2"
+            >
+              {{ job.description }}
+            </p>
+            <div class="mt-4 flex items-center justify-between">
+              <span
+                class="text-xs font-medium text-slate-400 dark:text-slate-500"
+                ><i class="fa-regular fa-clock mr-1"></i> Posted {{
+                job.created_at.strftime('%b %d') }}</span
+              >
+              <!-- Button that triggers the upload modal with this job pre-selected -->
+              <button
+                onclick="applyForJob('{{ job.id }}', '{{ job.title }}')"
+                class="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Apply Now
+              </button>
             </div>
+          </div>
+          {% endfor %}
         </div>
+        {% else %}
+        <div class="text-center py-8">
+          <div
+            class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-500 mb-3"
+          >
+            <i class="fa-regular fa-face-frown text-xl"></i>
+          </div>
+          <h3 class="text-slate-800 dark:text-slate-200 font-medium">
+            No open positions right now.
+          </h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Check back later or upload a general resume below.
+          </p>
+        </div>
+        {% endif %}
+      </div>
     </div>
+  </div>
 
-    <!-- Upload Section -->
-    <div class="lg:col-span-1" id="upload-section">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:bg-brand-500/10"></div>
-            
-            <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                <i class="fa-solid fa-cloud-arrow-up mr-2 text-brand-500"></i> Upload Resume
-            </h2>
-            
-            <form action="{{ url_for('student_bp.upload') }}" method="POST" enctype="multipart/form-data" id="upload-form">
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Applying for:</label>
-                    <select name="job_id" id="job-select" class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm py-2 px-3 bg-slate-50 border">
-                        <option value="">General Application (No Specific Job)</option>
-                        {% for job in jobs %}
-                        <option value="{{ job.id }}">{{ job.title }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+  <!-- Upload Section -->
+  <div class="lg:col-span-1" id="upload-section">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 relative overflow-hidden group"
+    >
+      <div
+        class="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-110 group-hover:bg-brand-500/10"
+      ></div>
 
-                <!-- DRAG AND DROP ZONE -->
-                <div id="drop-zone" class="mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 px-6 py-12 transition-all duration-300 ease-in-out hover:bg-slate-50 bg-white relative overflow-hidden" 
-                    ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-                    
-                    <div class="absolute inset-0 bg-brand-50/50 opacity-0 transition-opacity duration-300 pointer-events-none" id="drop-overlay"></div>
-                    
-                    <div class="text-center relative z-10 w-full">
-                        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 group-hover:bg-brand-50 group-hover:text-brand-500 shadow-inner" id="icon-container">
-                            <i class="fa-regular fa-file-pdf text-3xl transition-transform duration-300 group-hover:-translate-y-1" id="upload-icon"></i>
-                        </div>
-                        
-                        <div class="mt-4 flex text-sm leading-6 text-slate-600 justify-center flex-col sm:flex-row items-center">
-                            <label for="file-upload" class="relative cursor-pointer rounded-md font-semibold text-brand-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500 transition-colors">
-                                <span>Click to upload</span>
-                                <input id="file-upload" name="resume" type="file" class="sr-only" accept=".pdf" onchange="handleFileSelect(event)">
-                            </label>
-                            <p class="sm:pl-1 text-slate-500">or drag and drop</p>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-2 font-medium" id="file-name-display">PDF format (Max 10MB)</p>
+      <h2
+        class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4 flex items-center"
+      >
+        <i class="fa-solid fa-cloud-arrow-up mr-2 text-brand-500"></i> Upload
+        Resume
+      </h2>
+
+      <form
+        action="{{ url_for('student_bp.upload') }}"
+        method="POST"
+        enctype="multipart/form-data"
+        id="upload-form"
+      >
+        <div class="mb-4">
+          <label
+            class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+            >Applying for:</label
+          >
+          <select
+            name="job_id"
+            id="job-select"
+            class="block w-full rounded-xl border-slate-300 dark:border-slate-600 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm py-2 px-3 bg-slate-50 dark:bg-slate-700 dark:text-slate-200 border"
+          >
+            <option value="">General Application (No Specific Job)</option>
+            {% for job in jobs %}
+            <option value="{{ job.id }}">{{ job.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- DRAG AND DROP ZONE -->
+        <div
+          id="drop-zone"
+          class="mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 px-6 py-10 transition-all duration-300 ease-in-out hover:bg-slate-50 dark:hover:bg-slate-700/50 bg-white dark:bg-slate-800/50 relative overflow-hidden"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+        >
+          <div
+            class="absolute inset-0 bg-brand-50/50 dark:bg-brand-900/10 opacity-0 transition-opacity duration-300 pointer-events-none"
+            id="drop-overlay"
+          ></div>
+
+          <div class="text-center relative z-10 w-full">
+            <div
+              class="w-16 h-16 bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 shadow-inner"
+              id="icon-container"
+            >
+              <i
+                class="fa-regular fa-file text-3xl transition-transform duration-300"
+                id="upload-icon"
+              ></i>
+            </div>
+
+            <!-- Format badges -->
+            <div class="flex flex-wrap justify-center gap-1.5 mb-3">
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                >PDF</span
+              >
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                >DOCX</span
+              >
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+                >DOC</span
+              >
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300"
+                >TXT</span
+              >
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                >RTF</span
+              >
+              <span
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400"
+                >ODT</span
+              >
+            </div>
+
+            <div
+              class="mt-2 flex text-sm leading-6 text-slate-600 dark:text-slate-400 justify-center flex-col sm:flex-row items-center"
+            >
+              <label
+                for="file-upload"
+                class="relative cursor-pointer rounded-md font-semibold text-brand-600 dark:text-brand-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500 transition-colors"
+              >
+                <span>Click to upload</span>
+                <input
+                  id="file-upload"
+                  name="resume"
+                  type="file"
+                  class="sr-only"
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.odt"
+                  onchange="handleFileSelect(event)"
+                />
+              </label>
+              <p class="sm:pl-1 text-slate-500 dark:text-slate-400">
+                or drag and drop
+              </p>
+            </div>
+            <p
+              class="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium"
+              id="file-name-display"
+            >
+              PDF, DOCX, DOC, TXT, RTF, ODT · Max 10MB
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <button
+            type="submit"
+            class="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-semibold text-white bg-slate-900 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-300 active:scale-[0.98]"
+          >
+            Submit Application
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upload History Section -->
+  <div class="lg:col-span-2">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-full"
+    >
+      <div
+        class="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
+      >
+        <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">
+          <i
+            class="fa-solid fa-clock-rotate-left mr-2 text-slate-400 dark:text-slate-500"
+          ></i
+          >Application History
+        </h3>
+      </div>
+
+      <div class="flex-grow">
+        {% if uploads %}
+        <div class="overflow-x-auto">
+          <table
+            class="min-w-full divide-y divide-slate-100 dark:divide-slate-700"
+          >
+            <thead class="bg-slate-50/80 dark:bg-slate-700/50">
+              <tr>
+                <th
+                  scope="col"
+                  class="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Document
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Date Applied
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="bg-white dark:bg-slate-800 divide-y divide-slate-50 dark:divide-slate-700"
+            >
+              {% for upload in uploads %}
+              <tr
+                class="hover:bg-slate-50/50 dark:hover:bg-slate-700/40 transition-colors duration-200 group"
+              >
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div
+                      class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 flex items-center justify-center mr-3"
+                    >
+                      <i class="fa-solid fa-file-lines"></i>
                     </div>
-                </div>
-
-                <div class="mt-6">
-                    <button type="submit" class="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-semibold text-white bg-slate-900 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-300 active:scale-[0.98]">
-                        Submit Application
+                    <div
+                      class="text-sm font-medium text-slate-900 dark:text-slate-100"
+                    >
+                      {{ upload.original_filename }}
+                    </div>
+                  </div>
+                </td>
+                <td
+                  class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-medium"
+                >
+                  {{ upload.upload_date.strftime('%b %d, %Y') }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  {% if upload.status == 'pending' %}
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-700/50"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"
+                    ></span>
+                    Under Review
+                  </span>
+                  {% elif upload.status == 'analyzed' %}
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-700/50"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 opacity-75 animate-pulse"
+                    ></span>
+                    Analyzed
+                  </span>
+                  {% elif upload.status == 'shortlisted' %}
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-700/50"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"
+                    ></span>
+                    Shortlisted
+                  </span>
+                  {% elif upload.status == 'rejected' %}
+                  <span
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 mr-1.5"
+                    ></span>
+                    Closed
+                  </span>
+                  {% endif %}
+                </td>
+                <td
+                  class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                >
+                  <div class="flex justify-end items-center space-x-2">
+                    {% if upload.analysis %}
+                    <button
+                      onclick="viewInsights('{{ upload.id }}')"
+                      class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold"
+                    >
+                      <i class="fa-solid fa-chart-pie mr-1.5"></i> Insights
                     </button>
-                </div>
-            </form>
+                    {% endif %}
+                    <a
+                      href="{{ url_for('hr_bp.view_resume', upload_id=upload.id) }}"
+                      target="_blank"
+                      class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold tooltip"
+                      title="View Document"
+                    >
+                      <i class="fa-regular fa-eye"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-    </div>
-
-    <!-- Upload History Section -->
-    <div class="lg:col-span-2">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
-            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white/50 backdrop-blur-sm">
-                <h3 class="text-lg font-semibold text-slate-800"><i class="fa-solid fa-clock-rotate-left mr-2 text-slate-400"></i>Application History</h3>
-            </div>
-            
-            <div class="flex-grow">
-                {% if uploads %}
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-100">
-                        <thead class="bg-slate-50/80">
-                            <tr>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Document</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date Applied</th>
-                                <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-slate-50">
-                            {% for upload in uploads %}
-                            <tr class="hover:bg-slate-50/50 transition-colors duration-200 group">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center mr-3">
-                                            <i class="fa-solid fa-file-pdf"></i>
-                                        </div>
-                                        <div class="text-sm font-medium text-slate-900">{{ upload.original_filename }}</div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 font-medium">
-                                    {{ upload.upload_date.strftime('%b %d, %Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if upload.status == 'pending' %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-600 border border-amber-200/50">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span> Under Review
-                                        </span>
-                                    {% elif upload.status == 'analyzed' %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/50">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 opacity-75 animate-pulse"></span> Analyzed
-                                        </span>
-                                    {% elif upload.status == 'shortlisted' %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/50">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> Shortlisted
-                                        </span>
-                                    {% elif upload.status == 'rejected' %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span> Closed
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div class="flex justify-end items-center space-x-2">
-                                        {% if upload.analysis %}
-                                        <button onclick="viewInsights('{{ upload.id }}')" class="text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold">
-                                            <i class="fa-solid fa-chart-pie mr-1.5"></i> Insights
-                                        </button>
-                                        {% endif %}
-                                        <a href="{{ url_for('hr_bp.view_resume', upload_id=upload.id) }}" target="_blank" class="text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold tooltip" title="View Document">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="h-full flex flex-col items-center justify-center p-12 text-center">
-                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                        <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
-                    </div>
-                    <h3 class="text-lg font-medium text-slate-800 mb-1">No applications yet</h3>
-                    <p class="text-slate-500 text-sm max-w-sm">Upload your first resume using the specific form to start getting AI-powered feedback.</p>
-                </div>
-                {% endif %}
-            </div>
+        {% else %}
+        <div
+          class="h-full flex flex-col items-center justify-center p-12 text-center"
+        >
+          <div
+            class="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4"
+          >
+            <i
+              class="fa-solid fa-folder-open text-3xl text-slate-300 dark:text-slate-500"
+            ></i>
+          </div>
+          <h3
+            class="text-lg font-medium text-slate-800 dark:text-slate-200 mb-1"
+          >
+            No applications yet
+          </h3>
+          <p class="text-slate-500 dark:text-slate-400 text-sm max-w-sm">
+            Upload your first resume using the specific form to start getting
+            AI-powered feedback.
+          </p>
         </div>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Modal for Insights -->
-<div id="insightsModal" class="fixed inset-0 z-[100] overflow-y-auto hidden opacity-0 transition-opacity duration-300" aria-modal="true">
-    <div class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
-        <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeInsights()"></div>
-        
-        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl w-full scale-95 opacity-0 duration-300" id="insightsContent">
-            
-            <div class="absolute top-0 right-0 pt-4 pr-4">
-                <button type="button" onclick="closeInsights()" class="bg-white rounded-md text-slate-400 hover:text-slate-500 focus:outline-none">
-                    <span class="sr-only">Close</span>
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-            
-            <div class="bg-white px-6 pt-5 pb-4 sm:p-8">
-                <div class="sm:flex sm:items-start mb-6">
-                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-brand-100 sm:mx-0 sm:h-10 sm:w-10 text-brand-600">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    </div>
-                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                        <h3 class="text-xl font-bold text-slate-900 leading-6" id="modal-title">AI Compatibility Insights</h3>
-                        <p class="text-sm text-slate-500 mt-1">Detailed analysis based on the job requirements.</p>
-                    </div>
-                </div>
+<div
+  id="insightsModal"
+  class="fixed inset-0 z-[100] overflow-y-auto hidden opacity-0 transition-opacity duration-300"
+  aria-modal="true"
+>
+  <div
+    class="flex items-center justify-center min-h-screen p-4 text-center sm:p-0"
+  >
+    <div
+      class="fixed inset-0 bg-slate-900/40 dark:bg-slate-900/70 backdrop-blur-sm transition-opacity"
+      onclick="closeInsights()"
+    ></div>
 
-                <!-- Loading State -->
-                <div id="insightsLoading" class="flex flex-col items-center justify-center py-10">
-                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-brand-500 mb-4"></i>
-                    <p class="text-slate-500 text-sm font-medium animate-pulse">Analyzing intelligent feedback...</p>
-                </div>
+    <div
+      class="relative bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl w-full scale-95 opacity-0 duration-300"
+      id="insightsContent"
+    >
+      <div class="absolute top-0 right-0 pt-4 pr-4">
+        <button
+          type="button"
+          onclick="closeInsights()"
+          class="bg-white dark:bg-slate-800 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300 focus:outline-none"
+        >
+          <span class="sr-only">Close</span>
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
 
-                <!-- Results Data (Hidden initially) -->
-                <div id="insightsData" class="hidden">
-                    
-                    <!-- Score Cards -->
-                    <div class="grid grid-cols-3 gap-4 mb-6">
-                        <div class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
-                            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Overall Match</div>
-                            <div class="text-3xl font-bold text-brand-600" id="i-total">0%</div>
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
-                            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Tech Skills</div>
-                            <div class="text-2xl font-bold text-slate-800" id="i-tech">0/10</div>
-                        </div>
-                        <div class="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
-                            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Experience</div>
-                            <div class="text-2xl font-bold text-slate-800" id="i-exp">0/10</div>
-                        </div>
-                    </div>
-
-                    <!-- Strengths and Weaknesses -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <h4 class="text-sm font-bold text-emerald-700 flex items-center mb-3">
-                                <i class="fa-solid fa-circle-check mr-2"></i> Key Strengths
-                            </h4>
-                            <ul id="i-strengths" class="space-y-2 text-sm text-slate-600">
-                                <!-- Populated dynamically -->
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 class="text-sm font-bold text-amber-700 flex items-center mb-3">
-                                <i class="fa-solid fa-triangle-exclamation mr-2"></i> Actionable Areas
-                            </h4>
-                            <ul id="i-concerns" class="space-y-2 text-sm text-slate-600">
-                                <!-- Populated dynamically -->
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Summary -->
-                    <div class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
-                        <h4 class="text-sm font-bold text-indigo-900 mb-2">AI Summary</h4>
-                        <p id="i-reasoning" class="text-sm text-indigo-800 font-medium leading-relaxed"></p>
-                    </div>
-
-                </div>
-            </div>
-            <div class="bg-slate-50 px-4 py-4 sm:px-6 flex justify-end">
-                <button type="button" onclick="closeInsights()" class="inline-flex justify-center rounded-lg border border-slate-300 px-4 py-2 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none transition-colors">
-                    Close
-                </button>
-            </div>
+      <div class="bg-white dark:bg-slate-800 px-6 pt-5 pb-4 sm:p-8">
+        <div class="sm:flex sm:items-start mb-6">
+          <div
+            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-brand-100 dark:bg-brand-900/30 sm:mx-0 sm:h-10 sm:w-10 text-brand-600 dark:text-brand-400"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <h3
+              class="text-xl font-bold text-slate-900 dark:text-slate-100 leading-6"
+              id="modal-title"
+            >
+              AI Compatibility Insights
+            </h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Detailed analysis based on the job requirements.
+            </p>
+          </div>
         </div>
+
+        <!-- Loading State -->
+        <div
+          id="insightsLoading"
+          class="flex flex-col items-center justify-center py-10"
+        >
+          <i
+            class="fa-solid fa-circle-notch fa-spin text-3xl text-brand-500 mb-4"
+          ></i>
+          <p
+            class="text-slate-500 dark:text-slate-400 text-sm font-medium animate-pulse"
+          >
+            Analyzing intelligent feedback...
+          </p>
+        </div>
+
+        <!-- Results Data (Hidden initially) -->
+        <div id="insightsData" class="hidden">
+          <!-- Score Cards -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div
+              class="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 text-center border border-slate-100 dark:border-slate-600"
+            >
+              <div
+                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+              >
+                Overall Match
+              </div>
+              <div
+                class="text-3xl font-bold text-brand-600 dark:text-brand-400"
+                id="i-total"
+              >
+                0%
+              </div>
+            </div>
+            <div
+              class="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 text-center border border-slate-100 dark:border-slate-600"
+            >
+              <div
+                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+              >
+                Tech Skills
+              </div>
+              <div
+                class="text-2xl font-bold text-slate-800 dark:text-slate-200"
+                id="i-tech"
+              >
+                0/10
+              </div>
+            </div>
+            <div
+              class="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 text-center border border-slate-100 dark:border-slate-600"
+            >
+              <div
+                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+              >
+                Experience
+              </div>
+              <div
+                class="text-2xl font-bold text-slate-800 dark:text-slate-200"
+                id="i-exp"
+              >
+                0/10
+              </div>
+            </div>
+          </div>
+
+          <!-- Strengths and Weaknesses -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h4
+                class="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center mb-3"
+              >
+                <i class="fa-solid fa-circle-check mr-2"></i> Key Strengths
+              </h4>
+              <ul
+                id="i-strengths"
+                class="space-y-2 text-sm text-slate-600 dark:text-slate-300"
+              >
+                <!-- Populated dynamically -->
+              </ul>
+            </div>
+            <div>
+              <h4
+                class="text-sm font-bold text-amber-700 dark:text-amber-400 flex items-center mb-3"
+              >
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i> Actionable
+                Areas
+              </h4>
+              <ul
+                id="i-concerns"
+                class="space-y-2 text-sm text-slate-600 dark:text-slate-300"
+              >
+                <!-- Populated dynamically -->
+              </ul>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div
+            class="bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl p-5 border border-indigo-100 dark:border-indigo-800/50"
+          >
+            <h4
+              class="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-2"
+            >
+              AI Summary
+            </h4>
+            <p
+              id="i-reasoning"
+              class="text-sm text-indigo-800 dark:text-indigo-300 font-medium leading-relaxed"
+            ></p>
+          </div>
+        </div>
+      </div>
+      <div
+        class="bg-slate-50 dark:bg-slate-700/50 px-4 py-4 sm:px-6 flex justify-end"
+      >
+        <button
+          type="button"
+          onclick="closeInsights()"
+          class="inline-flex justify-center rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none transition-colors"
+        >
+          Close
+        </button>
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-    // --- Drag and Drop Logic ---
-    const dropZone = document.getElementById('drop-zone');
-    const dropOverlay = document.getElementById('drop-overlay');
-    const fileInput = document.getElementById('file-upload');
-    const fileNameDisplay = document.getElementById('file-name-display');
-    const iconContainer = document.getElementById('icon-container');
-    const uploadIcon = document.getElementById('upload-icon');
+  // --- File type icon mapping ---
+  const fileTypeIcons = {
+    pdf: { icon: "fa-file-pdf", color: "text-red-500" },
+    doc: { icon: "fa-file-word", color: "text-blue-500" },
+    docx: { icon: "fa-file-word", color: "text-blue-500" },
+    txt: { icon: "fa-file-lines", color: "text-slate-500" },
+    rtf: { icon: "fa-file-lines", color: "text-amber-500" },
+    odt: { icon: "fa-file-lines", color: "text-emerald-500" },
+  };
 
-    function handleDragOver(e) {
-        e.preventDefault();
-        dropZone.classList.add('border-brand-500');
-        dropOverlay.classList.remove('opacity-0');
-        iconContainer.classList.add('bg-brand-100', 'text-brand-600', 'scale-110');
+  // --- Drag and Drop Logic ---
+  const dropZone = document.getElementById("drop-zone");
+  const dropOverlay = document.getElementById("drop-overlay");
+  const fileInput = document.getElementById("file-upload");
+  const fileNameDisplay = document.getElementById("file-name-display");
+  const iconContainer = document.getElementById("icon-container");
+  const uploadIcon = document.getElementById("upload-icon");
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    dropZone.classList.add("border-brand-500");
+    dropOverlay.classList.remove("opacity-0");
+    iconContainer.classList.add("bg-brand-100", "text-brand-600", "scale-110");
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    dropZone.classList.remove("border-brand-500");
+    dropOverlay.classList.add("opacity-0");
+    iconContainer.classList.remove(
+      "bg-brand-100",
+      "text-brand-600",
+      "scale-110",
+    );
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    handleDragLeave(e);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      updateFileName();
     }
+  }
 
-    function handleDragLeave(e) {
-        e.preventDefault();
-        dropZone.classList.remove('border-brand-500');
-        dropOverlay.classList.add('opacity-0');
-        iconContainer.classList.remove('bg-brand-100', 'text-brand-600', 'scale-110');
+  function handleFileSelect(e) {
+    updateFileName();
+  }
+
+  function updateFileName() {
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      const size = (file.size / (1024 * 1024)).toFixed(2);
+      const ext = file.name.split(".").pop().toLowerCase();
+
+      fileNameDisplay.innerHTML = `<span class="text-brand-600 dark:text-brand-400 font-semibold">${file.name}</span> <span class="text-slate-400">(${size} MB)</span>`;
+
+      // Update icon based on file type
+      const typeInfo = fileTypeIcons[ext] || {
+        icon: "fa-file",
+        color: "text-slate-500",
+      };
+      iconContainer.className =
+        "w-16 h-16 bg-brand-500 rounded-full flex items-center justify-center mx-auto mb-4 transition-all duration-300 shadow-inner";
+      uploadIcon.className = `fa-solid ${typeInfo.icon} text-3xl text-white transition-transform duration-300`;
     }
+  }
 
-    function handleDrop(e) {
-        e.preventDefault();
-        handleDragLeave(e);
-        
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files;
-            updateFileName();
-        }
-    }
+  function applyForJob(jobId, jobTitle) {
+    document.getElementById("job-select").value = jobId;
 
-    function handleFileSelect(e) {
-        updateFileName();
-    }
+    // Scroll to upload section smoothly
+    document.getElementById("upload-section").scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
 
-    function updateFileName() {
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const size = (file.size / (1024*1024)).toFixed(2);
-            fileNameDisplay.innerHTML = `<span class="text-brand-600 font-semibold">${file.name}</span> <span class="text-slate-400">(${size} MB)</span>`;
-            
-            iconContainer.classList.add('bg-brand-500', 'text-white');
-            iconContainer.classList.remove('bg-slate-100', 'text-slate-400');
-            uploadIcon.classList.remove('fa-regular', 'fa-file-pdf');
-            uploadIcon.classList.add('fa-solid', 'fa-file-circle-check');
-        }
-    }
+    // Highlight the drop zone briefly
+    const dropZone = document.getElementById("drop-zone");
+    dropZone.classList.add("ring-4", "ring-brand-200", "border-brand-500");
+    setTimeout(() => {
+      dropZone.classList.remove("ring-4", "ring-brand-200", "border-brand-500");
+    }, 1500);
+  }
 
-    function applyForJob(jobId, jobTitle) {
-        document.getElementById('job-select').value = jobId;
-        
-        // Scroll to upload section smoothly
-        document.getElementById('upload-section').scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
+  // --- Insights Logic ---
+  const modal = document.getElementById("insightsModal");
+  const content = document.getElementById("insightsContent");
+  const loader = document.getElementById("insightsLoading");
+  const dataContainer = document.getElementById("insightsData");
+
+  async function viewInsights(uploadId) {
+    // Show modal
+    modal.classList.remove("hidden");
+    // Trigger reflow
+    void modal.offsetWidth;
+    modal.classList.remove("opacity-0");
+    content.classList.remove("scale-95", "opacity-0");
+    content.classList.add("scale-100", "opacity-100");
+
+    // Reset views
+    loader.classList.remove("hidden");
+    dataContainer.classList.add("hidden");
+
+    try {
+      const res = await fetch(`/student/api/insights/${uploadId}`);
+      if (!res.ok) throw new Error("Network response was not ok");
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      // Populate data
+      document.getElementById("i-total").innerText = `${data.total_score}%`;
+      document.getElementById("i-tech").innerText =
+        `${data.technical_skills_score}/10`;
+      document.getElementById("i-exp").innerText =
+        `${data.experience_score}/10`;
+      document.getElementById("i-reasoning").innerText = data.reasoning;
+
+      // List items
+      const strUl = document.getElementById("i-strengths");
+      strUl.innerHTML = "";
+      if (data.key_strengths && data.key_strengths.length > 0) {
+        data.key_strengths.forEach((s) => {
+          strUl.innerHTML += `<li class="flex items-start"><span class="text-emerald-500 mr-2 mt-0.5">•</span> <span>${s}</span></li>`;
         });
-        
-        // Highlight the drop zone briefly
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.classList.add('ring-4', 'ring-brand-200', 'border-brand-500');
-        setTimeout(() => {
-            dropZone.classList.remove('ring-4', 'ring-brand-200', 'border-brand-500');
-        }, 1500);
+      } else {
+        strUl.innerHTML =
+          '<li class="text-slate-400 italic">No specific strengths highlighted</li>';
+      }
+
+      const conUl = document.getElementById("i-concerns");
+      conUl.innerHTML = "";
+      if (data.concerns && data.concerns.length > 0) {
+        data.concerns.forEach((c) => {
+          conUl.innerHTML += `<li class="flex items-start"><span class="text-amber-500 mr-2 mt-0.5">•</span> <span>${c}</span></li>`;
+        });
+      } else {
+        conUl.innerHTML =
+          '<li class="text-slate-400 italic">No specific concerns found</li>';
+      }
+
+      // Switch view
+      loader.classList.add("hidden");
+      dataContainer.classList.remove("hidden");
+    } catch (err) {
+      loader.innerHTML = `<div class="text-center text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i><p class="font-medium">Could not load insights.</p><p class="text-xs text-slate-500 mt-1">${err.message}</p></div>`;
     }
+  }
 
-    // --- Insights Logic ---
-    const modal = document.getElementById('insightsModal');
-    const content = document.getElementById('insightsContent');
-    const loader = document.getElementById('insightsLoading');
-    const dataContainer = document.getElementById('insightsData');
+  function closeInsights() {
+    modal.classList.add("opacity-0");
+    content.classList.remove("scale-100", "opacity-100");
+    content.classList.add("scale-95", "opacity-0");
 
-    async function viewInsights(uploadId) {
-        // Show modal
-        modal.classList.remove('hidden');
-        // Trigger reflow
-        void modal.offsetWidth;
-        modal.classList.remove('opacity-0');
-        content.classList.remove('scale-95', 'opacity-0');
-        content.classList.add('scale-100', 'opacity-100');
-
-        // Reset views
-        loader.classList.remove('hidden');
-        dataContainer.classList.add('hidden');
-
-        try {
-            const res = await fetch(`/student/api/insights/${uploadId}`);
-            if (!res.ok) throw new Error('Network response was not ok');
-            const data = await res.json();
-            
-            if (data.error) throw new Error(data.error);
-
-            // Populate data
-            document.getElementById('i-total').innerText = `${data.total_score}%`;
-            document.getElementById('i-tech').innerText = `${data.technical_skills_score}/10`;
-            document.getElementById('i-exp').innerText = `${data.experience_score}/10`;
-            document.getElementById('i-reasoning').innerText = data.reasoning;
-
-            // List items
-            const strUl = document.getElementById('i-strengths');
-            strUl.innerHTML = '';
-            if (data.key_strengths && data.key_strengths.length > 0) {
-                data.key_strengths.forEach(s => {
-                    strUl.innerHTML += `<li class="flex items-start"><span class="text-emerald-500 mr-2 mt-0.5">•</span> <span>${s}</span></li>`;
-                });
-            } else {
-                strUl.innerHTML = '<li class="text-slate-400 italic">No specific strengths highlighted</li>';
-            }
-
-            const conUl = document.getElementById('i-concerns');
-            conUl.innerHTML = '';
-            if (data.concerns && data.concerns.length > 0) {
-                data.concerns.forEach(c => {
-                    conUl.innerHTML += `<li class="flex items-start"><span class="text-amber-500 mr-2 mt-0.5">•</span> <span>${c}</span></li>`;
-                });
-            } else {
-                conUl.innerHTML = '<li class="text-slate-400 italic">No specific concerns found</li>';
-            }
-
-            // Switch view
-            loader.classList.add('hidden');
-            dataContainer.classList.remove('hidden');
-
-        } catch (err) {
-            loader.innerHTML = `<div class="text-center text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i><p class="font-medium">Could not load insights.</p><p class="text-xs text-slate-500 mt-1">${err.message}</p></div>`;
-        }
-    }
-
-    function closeInsights() {
-        modal.classList.add('opacity-0');
-        content.classList.remove('scale-100', 'opacity-100');
-        content.classList.add('scale-95', 'opacity-0');
-        
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
-    }
+    setTimeout(() => {
+      modal.classList.add("hidden");
+    }, 300);
+  }
 </script>
 
 {% endblock %}

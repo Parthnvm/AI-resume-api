@@ -77,6 +77,12 @@ def dashboard():
     uploads = ResumeUpload.query.filter_by(user_id=current_user.id).order_by(ResumeUpload.upload_date.desc()).all()
     return render_template('student_dashboard.html', uploads=uploads, jobs=jobs)
 
+# Allowed resume file extensions
+ALLOWED_RESUME_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'}
+
+def allowed_resume_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_RESUME_EXTENSIONS
+
 @student_bp.route('/upload', methods=['POST'])
 @login_required
 def upload():
@@ -89,7 +95,7 @@ def upload():
         flash('No selected file', 'error')
         return redirect(url_for('student_bp.dashboard'))
         
-    if file and file.filename.endswith('.pdf'):
+    if file and allowed_resume_file(file.filename):
         filename = secure_filename(file.filename)
         safe_filename = f"{current_user.id}_{filename}"
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], safe_filename)
@@ -108,7 +114,7 @@ def upload():
         db.session.commit()
         flash('Resume submitted successfully!', 'success')
     else:
-        flash('Only PDF files are allowed.', 'error')
+        flash('Unsupported file format. Please upload PDF, DOCX, DOC, TXT, RTF, or ODT.', 'error')
         
     return redirect(url_for('student_bp.dashboard'))
 

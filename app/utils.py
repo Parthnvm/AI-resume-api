@@ -1,5 +1,8 @@
 import os
+import re
 import json
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from pypdf import PdfReader
 
@@ -19,22 +22,41 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 import docx
 
 def extract_text(file_path: str) -> str:
-    ext = file_path.lower().split('.')[-1]
+    ext = file_path.lower().rsplit('.', 1)[-1]
     text = ""
     try:
         if ext == 'pdf':
             reader = PdfReader(file_path)
-            text = "".join(page.extract_text() + "\n" for page in reader.pages)
-        elif ext == 'docx':
+            text = "".join((page.extract_text() or "") + "\n" for page in reader.pages)
+        elif ext in ('docx', 'doc'):
+            # python-docx handles both .docx and many .doc files
             doc = docx.Document(file_path)
             text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
         elif ext == 'txt':
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 text = f.read()
+        elif ext == 'rtf':
+            # Basic RTF stripping: remove control words and groups
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                raw = f.read()
+            # Remove RTF control words and braces
+            text = re.sub(r'\\[a-z*]+[-\d]*\s?', ' ', raw)
+            text = re.sub(r'[{}]', '', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+        elif ext == 'odt':
+            # ODT is a zip containing content.xml
+            with zipfile.ZipFile(file_path, 'r') as z:
+                if 'content.xml' in z.namelist():
+                    with z.open('content.xml') as xf:
+                        xml_content = xf.read().decode('utf-8', errors='ignore')
+                    # Strip XML tags
+                    text = re.sub(r'<[^>]+>', ' ', xml_content)
+                    text = re.sub(r'\s+', ' ', text).strip()
         return text
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
         return ""
+
 
 def load_text_file(filename: str, default_content: str) -> str:
     path = ROOT_DIR / filename
