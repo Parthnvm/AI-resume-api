@@ -112,6 +112,19 @@ def _parse_json_response(text: str) -> Optional[dict | list]:
         return None
 
 
+def _coerce_list(value) -> list:
+    """Safely coerce a model value to a clean list of non-empty strings."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str):
+        # Comma-separated string → split; single value → wrap
+        parts = [v.strip() for v in value.split(",")]
+        return [p for p in parts if p]
+    return [str(value)] if str(value).strip() else []
+
+
 def _normalise(r: dict) -> dict:
     """Normalise a single result dict — handle camelCase aliases from the model."""
     def _get(*keys, default=None):
@@ -126,8 +139,8 @@ def _normalise(r: dict) -> dict:
         "skill_score":      round(float(_get("skillScore",    "skillscore",    "skill_score",    default=0)), 2),
         "content_score":    round(float(_get("contentScore",  "contentscore",  "content_score",  default=0)), 2),
         "reasoning":        str(_get("reasoning", default="")),
-        "found_skills":     list(_get("foundSkills",   "found_skills",   "foundsills",    default=[])),
-        "missing_skills":   list(_get("missingSkills",  "missing_skills",  "missingskills",  default=[])),
+        "found_skills":     _coerce_list(_get("foundSkills",   "found_skills",   "foundsills")),
+        "missing_skills":   _coerce_list(_get("missingSkills",  "missing_skills",  "missingskills")),
         "status":           str(_get("status", default="success")),
         "phone":            str(_get("phone",     default="Not found")),
         "email":            str(_get("email",     default="Not found")),
@@ -238,6 +251,14 @@ def batch_analyze_with_gemini(resumes: list, jd_text: str) -> Optional[list]:
                     break
                 items = raw if isinstance(raw, list) else raw.get("results", [])
                 normalised = [_normalise(r) for r in items if isinstance(r, dict)]
+                expected_count = len(resumes)
+                if len(normalised) != expected_count:
+                    logger.warning(
+                        "Gemini batch cardinality mismatch with model=%s: "
+                        "expected=%d actual=%d — skipping, trying fallback",
+                        model, expected_count, len(normalised),
+                    )
+                    break  # try next model
                 normalised.sort(key=lambda x: x["match_score"], reverse=True)
                 logger.info(f"Gemini batch OK with model={model}")
                 return normalised

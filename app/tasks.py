@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 import zipfile
 import threading
 import requests
@@ -35,7 +36,10 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 upload_folder = current_app.config['UPLOAD_FOLDER']
 
-                batch_folder = os.path.join(upload_folder, f"batch_{os.path.basename(zip_path).split('.')[0]}")
+                # Unique batch folder per upload to avoid concurrent-upload collisions.
+                batch_uid = uuid.uuid4().hex
+                zip_stem  = secure_filename(os.path.basename(zip_path).rsplit('.', 1)[0]) or "batch"
+                batch_folder = os.path.join(upload_folder, f"batch_{zip_stem}_{batch_uid}")
                 os.makedirs(batch_folder, exist_ok=True)
 
                 # Ensure the shared bulk-upload user exists exactly once,
@@ -59,11 +63,15 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
                 for file_info in zip_ref.infolist():
                     if file_info.filename.endswith('.pdf') and not file_info.filename.startswith('__MACOSX'):
-                        filename = secure_filename(os.path.basename(file_info.filename))
-                        if not filename:
+                        # Preserve sub-folder structure from within the ZIP, sanitised.
+                        safe_rel = file_info.filename.replace('\\', '/').lstrip('/')
+                        safe_parts = [secure_filename(p) for p in safe_rel.split('/') if p]
+                        if not safe_parts or not safe_parts[-1]:
                             continue
+                        filename = safe_parts[-1]   # leaf file name (for DB / logging)
 
-                        file_path = os.path.join(batch_folder, filename)
+                        file_path = os.path.join(batch_folder, *safe_parts)
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
                         with open(file_path, 'wb') as f:
                             f.write(zip_ref.read(file_info.filename))
@@ -78,8 +86,6 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
                         )
                         db.session.add(new_upload)
                         db.session.commit()
-
-                        extracted_files.append(new_upload)
 
                         try:
                             resume_text = extract_text(file_path)
@@ -113,6 +119,9 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
                                 new_upload.status = 'analyzed'
                                 db.session.commit()
+
+                                # Only count as processed after successful extraction + analysis.
+                                extracted_files.append(new_upload)
 
                         except Exception as parse_e:
                             print(f"Error parsing {filename}: {parse_e}")
