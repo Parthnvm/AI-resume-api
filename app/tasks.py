@@ -28,7 +28,7 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
     Creates a dummy student profile for each parsed resume if needed.
     """
     with app_instance.app_context():
-        hr_user = User.query.get(hr_user_id)
+        # hr_user_id is forwarded in the webhook payload; no need to load the row here.
         job = JobDescription.query.get(job_id) if job_id else None
 
         extracted_files = []

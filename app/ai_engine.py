@@ -2,8 +2,8 @@
 app/ai_engine.py — Gemini AI-powered resume analysis engine.
 
 Uses the new `google-genai` SDK (google.genai) with a model fallback chain:
-  1. gemini-2.0-flash  (latest, best quality)
-  2. gemini-1.5-flash  (stable, higher free-tier quota)
+  1. gemini-2.0-flash       (latest, best quality — tried first)
+  2. gemini-2.0-flash-lite  (lighter model, higher free-tier quota — fallback)
 Falls back gracefully to None on any error so utils.py can use TF-IDF instead.
 """
 
@@ -125,6 +125,16 @@ def _coerce_list(value) -> list:
     return [str(value)] if str(value).strip() else []
 
 
+def _safe_int(value, default: int = 0) -> int:
+    """Safely parse *value* to int; return *default* for non-numeric inputs."""
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value).strip())
+    except (ValueError, TypeError):
+        return default
+
+
 def _normalise(r: dict) -> dict:
     """Normalise a single result dict — handle camelCase aliases from the model."""
     def _get(*keys, default=None):
@@ -145,7 +155,7 @@ def _normalise(r: dict) -> dict:
         "phone":            str(_get("phone",     default="Not found")),
         "email":            str(_get("email",     default="Not found")),
         "education":        str(_get("education", default="Not specified")),
-        "experience_years": int(_get("experienceYears", "experienceyears", "experience_years", default=0)),
+        "experience_years": _safe_int(_get("experienceYears", "experienceyears", "experience_years", default=0)),
     }
 
 
