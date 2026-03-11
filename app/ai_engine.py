@@ -7,6 +7,7 @@ Uses the new `google-genai` SDK (google.genai) with a model fallback chain:
 Falls back gracefully to None on any error so utils.py can use TF-IDF instead.
 """
 
+import hashlib
 import os
 import json
 import logging
@@ -103,24 +104,35 @@ def _parse_json_response(text: str) -> Optional[dict | list]:
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
-        logger.error(f"Gemini JSON parse error: {e}\nRaw: {text[:300]}")
+        _digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+        logger.error(
+            "Gemini JSON parse error: %s | text_length=%d sha256_prefix=%s",
+            e, len(text), _digest,
+        )
         return None
 
 
 def _normalise(r: dict) -> dict:
     """Normalise a single result dict — handle camelCase aliases from the model."""
+    def _get(*keys, default=None):
+        for k in keys:
+            v = r.get(k)
+            if v is not None:
+                return v
+        return default
+
     return {
-        "match_score":      round(float(r.get("matchscore",    r.get("match_score",    0))), 2),
-        "skill_score":      round(float(r.get("skillscore",    r.get("skill_score",    0))), 2),
-        "content_score":    round(float(r.get("contentscore",  r.get("content_score",  0))), 2),
-        "reasoning":        str(r.get("reasoning", "")),
-        "found_skills":     list(r.get("foundsills",     r.get("found_skills",   []))),
-        "missing_skills":   list(r.get("missingskills",  r.get("missing_skills", []))),
-        "status":           str(r.get("status", "success")),
-        "phone":            str(r.get("phone",     "Not found")),
-        "email":            str(r.get("email",     "Not found")),
-        "education":        str(r.get("education", "Not specified")),
-        "experience_years": int(r.get("experienceyears", r.get("experience_years", 0))),
+        "match_score":      round(float(_get("matchScore",    "matchscore",    "match_score",    default=0)), 2),
+        "skill_score":      round(float(_get("skillScore",    "skillscore",    "skill_score",    default=0)), 2),
+        "content_score":    round(float(_get("contentScore",  "contentscore",  "content_score",  default=0)), 2),
+        "reasoning":        str(_get("reasoning", default="")),
+        "found_skills":     list(_get("foundSkills",   "found_skills",   "foundsills",    default=[])),
+        "missing_skills":   list(_get("missingSkills",  "missing_skills",  "missingskills",  default=[])),
+        "status":           str(_get("status", default="success")),
+        "phone":            str(_get("phone",     default="Not found")),
+        "email":            str(_get("email",     default="Not found")),
+        "education":        str(_get("education", default="Not specified")),
+        "experience_years": int(_get("experienceYears", "experienceyears", "experience_years", default=0)),
     }
 
 

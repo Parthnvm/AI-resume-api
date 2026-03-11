@@ -35,6 +35,19 @@ if "job_description_text" in cols and "job_description" not in cols:
     )
     changes.append("Renamed job_description_text → job_description")
 elif "job_description" in cols:
+    # Both columns coexist: backfill NULL/empty job_description from job_description_text
+    if "job_description_text" in cols:
+        print("Both columns present — backfilling job_description from job_description_text ...")
+        cursor.execute(
+            """
+            UPDATE candidate_analyses
+               SET job_description = job_description_text
+             WHERE (job_description IS NULL OR job_description = '')
+               AND job_description_text IS NOT NULL
+               AND job_description_text != ''
+            """
+        )
+        changes.append("Backfilled job_description from job_description_text")
     print("job_description column already present — skipping rename.")
 elif "job_description_text" not in cols and "job_description" not in cols:
     # Neither exists — add the column fresh

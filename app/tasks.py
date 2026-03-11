@@ -3,6 +3,7 @@ import json
 import zipfile
 import threading
 import requests
+from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 from flask import current_app
 from app import db
@@ -37,6 +38,25 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
                 batch_folder = os.path.join(upload_folder, f"batch_{os.path.basename(zip_path).split('.')[0]}")
                 os.makedirs(batch_folder, exist_ok=True)
 
+                # Ensure the shared bulk-upload user exists exactly once,
+                # using a race-safe insert: try to commit, catch the unique-
+                # constraint IntegrityError, rollback, and re-fetch.
+                bulk_user = User.query.filter_by(email='bulk@apexhire.internal').first()
+                if not bulk_user:
+                    try:
+                        bulk_user = User(
+                            email='bulk@apexhire.internal',
+                            password_hash='noop',
+                            first_name='Bulk',
+                            last_name='Upload',
+                            user_type='student'
+                        )
+                        db.session.add(bulk_user)
+                        db.session.commit()
+                    except IntegrityError:
+                        db.session.rollback()
+                        bulk_user = User.query.filter_by(email='bulk@apexhire.internal').first()
+
                 for file_info in zip_ref.infolist():
                     if file_info.filename.endswith('.pdf') and not file_info.filename.startswith('__MACOSX'):
                         filename = secure_filename(os.path.basename(file_info.filename))
@@ -47,19 +67,6 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
                         with open(file_path, 'wb') as f:
                             f.write(zip_ref.read(file_info.filename))
-
-                        # Use or create a generic bulk candidate user
-                        bulk_user = User.query.filter_by(email='bulk@apexhire.internal').first()
-                        if not bulk_user:
-                            bulk_user = User(
-                                email='bulk@apexhire.internal',
-                                password_hash='noop',
-                                first_name='Bulk',
-                                last_name='Upload',
-                                user_type='student'
-                            )
-                            db.session.add(bulk_user)
-                            db.session.commit()
 
                         new_upload = ResumeUpload(
                             user_id=bulk_user.id,
@@ -109,6 +116,7 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
                         except Exception as parse_e:
                             print(f"Error parsing {filename}: {parse_e}")
+                            db.session.rollback()
 
         except zipfile.BadZipFile:
             print("Invalid ZIP archive provided.")
