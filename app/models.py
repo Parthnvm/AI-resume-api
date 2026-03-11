@@ -60,13 +60,13 @@ class CandidateAnalysis(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     upload_id = db.Column(db.String(36), db.ForeignKey('resume_uploads.id'), nullable=False)
     
-    # Scores (out of 10)
-    technical_skills_score = db.Column(db.Integer, nullable=False, default=0)
-    experience_score = db.Column(db.Integer, nullable=False, default=0)
-    industry_relevance_score = db.Column(db.Integer, nullable=False, default=0)
-    education_score = db.Column(db.Integer, nullable=False, default=0)
-    overall_fit_score = db.Column(db.Integer, nullable=False, default=0)
-    total_score = db.Column(db.Integer, nullable=False, default=0)  # out of 100
+    # Scores (0-100 float)
+    technical_skills_score = db.Column(db.Float, nullable=False, default=0)
+    experience_score = db.Column(db.Float, nullable=False, default=0)
+    industry_relevance_score = db.Column(db.Float, nullable=False, default=0)
+    education_score = db.Column(db.Float, nullable=False, default=0)
+    overall_fit_score = db.Column(db.Float, nullable=False, default=0)
+    total_score = db.Column(db.Float, nullable=False, default=0)  # 0-100
     
     # Reasoning
     reasoning_summary = db.Column(db.Text)
@@ -74,4 +74,4 @@ class CandidateAnalysis(db.Model):
     concerns = db.Column(db.Text)
     
     analyzed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    job_description_text = db.Column(db.Text, nullable=True)
+    job_description = db.Column(db.Text, nullable=True)

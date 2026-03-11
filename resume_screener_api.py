@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Optional
 from io import BytesIO
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
@@ -22,10 +22,10 @@ logger = logging.getLogger("ResumeScreener")
 
 
 SKILL_DB = {
-    "languages": {"python", "java", "javascript", "c++", "c#", "ruby", "go", "rust", "php", "swift", "kotlin", "typescript", "sql"},
-    "frameworks": {"django", "flask", "fastapi", "react", "angular", "vue", "spring", "dotnet", "laravel", "express", "pytorch", "tensorflow"},
-    "tools": {"docker", "kubernetes", "aws", "azure", "gcp", "git", "jenkins", "jira", "redis", "mongodb", "postgresql", "mysql"},
-    "concepts": {"machine learning", "nlp", "rest api", "graphql", "ci/cd", "agile", "scrum", "devops", "microservices", "ui/ux", "frontend", "backend"}
+    "languages": {"python", "java", "javascript", "c++", "c#", "ruby", "go", "rust", "php", "swift", "kotlin", "typescript", "sql", "r", "scala", "perl", "bash", "shell"},
+    "frameworks": {"django", "flask", "fastapi", "react", "angular", "vue", "spring", "dotnet", "laravel", "express", "pytorch", "tensorflow", "keras", "nextjs", "nuxt", "svelte", "hadoop", "spark"},
+    "tools": {"docker", "kubernetes", "aws", "azure", "gcp", "git", "jenkins", "jira", "redis", "mongodb", "postgresql", "mysql", "elasticsearch", "kafka", "terraform", "ansible", "nginx", "linux"},
+    "concepts": {"machine learning", "nlp", "rest api", "graphql", "ci/cd", "agile", "scrum", "devops", "microservices", "ui/ux", "frontend", "backend", "deep learning", "data science", "cloud computing", "system design"}
 }
 
 
@@ -33,7 +33,7 @@ class AnalysisResult(BaseModel):
     match_score: float
     skill_score: float
     content_score: float
-    reasoning: str  # <--- NEW FIELD
+    reasoning: str
     found_skills: List[str]
     missing_skills: List[str]
     status: str
@@ -82,7 +82,7 @@ class TextProcessor:
     @staticmethod
     def clean(text: str) -> str:
         text = text.lower()
-        text = re.sub(r'[^a-z0-9\s\+\#]', ' ', text)
+        text = re.sub(r'[^a-z0-9\s\+\#\/\.\-]', ' ', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text
 
@@ -91,14 +91,15 @@ class TextProcessor:
         found = set()
         clean_txt = TextProcessor.clean(text)
         words = set(clean_txt.split())
-        
+
         for category in SKILL_DB.values():
             found.update(words.intersection(category))
-            
+
         for concept in SKILL_DB["concepts"]:
             if concept in clean_txt:
                 found.add(concept)
         return found
+
 
 class MatchingEngine:
     def __init__(self, jd_text: str, resume_text: str):
@@ -128,72 +129,156 @@ class MatchingEngine:
         score = len(matched) / len(jd_skills)
         return score, matched, missing
 
-    def generate_reasoning(self, final_score: float, matched: Set[str], missing: Set[str]) -> str:
-        """Generates a human-readable explanation."""
-        score_percent = final_score * 100
-        missing_list = list(missing)[:3] # Top 3 missing
-        
-        if score_percent >= 80:
-            return f"Excellent Match! The candidate possesses {len(matched)} key skills and aligns well with the job context."
-        elif score_percent >= 60:
-            return f"Good potential. Matches on core skills like {', '.join(list(matched)[:2])}, but missing specific tools."
-        elif score_percent >= 40:
-            reason = "Moderate match."
-            if missing:
-                reason += f" Candidate is missing critical requirements: {', '.join(missing_list)}."
-            else:
-                reason += " Context is similar, but specific technical keywords are absent."
-            return reason
+    def extract_required_experience_from_jd(self) -> int:
+        """Parse the number of required experience years from the JD."""
+        patterns = [
+            r'(\d+)\+?\s*(?:years?|yrs?)(?:\s+of)?\s+experience',
+            r'(?:minimum|at least|min\.?)\s+(\d+)\s+(?:years?|yrs?)',
+            r'(\d+)\s*-\s*\d+\s+(?:years?|yrs?)',
+        ]
+        lower_jd = self.jd_raw.lower()
+        for pat in patterns:
+            m = re.search(pat, lower_jd)
+            if m:
+                try:
+                    return int(m.group(1))
+                except (ValueError, IndexError):
+                    pass
+        return 0  # Not specified
+
+    def _extract_resume_snippets(self) -> List[str]:
+        """Extract 2-3 meaningful lines from the resume as evidence."""
+        lines = [l.strip() for l in self.resume_raw.splitlines() if len(l.strip()) > 40]
+        return lines[:3]
+
+    def generate_reasoning(
+        self,
+        final_score: float,
+        matched: Set[str],
+        missing: Set[str],
+        experience_years: int,
+        filename: str = ""
+    ) -> str:
+        """Generates a structured, HR-readable score explanation."""
+        score_pct = round(final_score * 100, 1)
+        total_jd_skills = len(matched) + len(missing)
+        matched_list = sorted(matched)
+        missing_list = sorted(missing)
+
+        required_exp = self.extract_required_experience_from_jd()
+
+        # --- Score Factors block ---
+        skill_examples = ", ".join(matched_list[:3]) if matched_list else "None"
+        missing_examples = ", ".join(missing_list[:3]) if missing_list else "None"
+
+        factors = (
+            f"Score Factors:\n"
+            f"  - Skills Match: {len(matched)}/{total_jd_skills if total_jd_skills else '?'} required skills found "
+            f"(e.g. {skill_examples})\n"
+            f"  - Missing Skills: {missing_examples}\n"
+        )
+
+        if required_exp > 0:
+            exp_line = (
+                f"  - Experience Alignment: {experience_years} yrs found vs "
+                f"{required_exp} yrs required\n"
+            )
         else:
-            return f"Low match. The resume content differs significantly from the job description. Missing: {', '.join(missing_list)}."
+            exp_line = f"  - Experience Alignment: {experience_years} yrs found (JD requirement not specified)\n"
+        factors += exp_line
+
+        # --- Role Fit ---
+        if score_pct >= 80:
+            role_fit = "Role Fit: Strong alignment — candidate covers most responsibilities and required tools."
+            why = f"Why This Score ({score_pct}%): Excellent overlap in both technical skills and contextual relevance to the job description."
+        elif score_pct >= 60:
+            role_fit = f"Role Fit: Good potential — matches core skills but gaps exist in: {missing_examples}."
+            why = f"Why This Score ({score_pct}%): Solid skill coverage with minor gaps; experience and content align reasonably well with the role."
+        elif score_pct >= 40:
+            role_fit = f"Role Fit: Partial match — candidate meets some criteria but is missing critical requirements: {missing_examples}."
+            why = f"Why This Score ({score_pct}%): Moderate keyword/semantic overlap; specific technical keywords from the JD are absent."
+        elif total_jd_skills > 0 and len(matched) == 0:
+            role_fit = "Role Fit: Missing core technical requirements — no skill overlap detected with the job description."
+            why = f"Why This Score ({score_pct}%): Missing core technical requirements. None of the required skills were found in the resume."
+        else:
+            role_fit = f"Role Fit: Weak alignment — resume content differs significantly from the job description."
+            why = f"Why This Score ({score_pct}%): Low semantic and skill overlap with the job description."
+
+        # --- Evidence ---
+        snippets = self._extract_resume_snippets()
+        if snippets:
+            evidence_lines = "\n".join(f'  "{s[:120]}"' for s in snippets)
+            evidence = f"Evidence:\n{evidence_lines}"
+        else:
+            evidence = "Evidence: Limited extractable info — resume may be image-based or poorly formatted."
+
+        # --- Batch prefix ---
+        prefix = f"Batch ID: {filename}\n" if filename else ""
+
+        return f"{prefix}{factors}{role_fit}\n\n{why}\n\n{evidence}"
 
     def extract_contact_info(self) -> Tuple[str, str, str, int]:
-        email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', self.resume_raw)
+        # Email
+        email_match = re.search(r'[\w\.\+\-]+@[\w\.-]+\.\w{2,}', self.resume_raw)
         email = email_match.group(0) if email_match else "Not found"
-        
-        # Phone: very basic check for 10 digits
-        phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', self.resume_raw)
-        phone = phone_match.group(0) if phone_match else "Not found"
-        
-        # Basic heuristic for education
+
+        # Phone: international and local formats
+        phone_patterns = [
+            r'\+?[\d\s\-\.\(\)]{10,17}',          # Generic international
+            r'\+?\d{1,3}[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}',  # +1 (123) 456-7890
+            r'\b\d{3}[\s\-\.]\d{3}[\s\-\.]\d{4}\b',  # 123-456-7890
+            r'\b\d{10}\b',                            # 10-digit compact
+        ]
+        phone = "Not found"
+        for pat in phone_patterns:
+            m = re.search(pat, self.resume_raw)
+            if m:
+                candidate = m.group(0).strip()
+                digits = re.sub(r'\D', '', candidate)
+                if 10 <= len(digits) <= 15:
+                    phone = candidate
+                    break
+
+        # Education
         lower_raw = self.resume_raw.lower()
         edu = "Not specified"
-        if "master" in lower_raw or "m.s." in lower_raw or "ms" in lower_raw.split():
-            edu = "Master's Degree"
-        elif "bachelor" in lower_raw or "b.s." in lower_raw or "bs" in lower_raw.split() or "b.a" in lower_raw:
-            edu = "Bachelor's Degree"
-        elif "phd" in lower_raw or "ph.d" in lower_raw:
+        if re.search(r'ph\.?d|doctorate|doctor of', lower_raw):
             edu = "Ph.D."
-            
-        # Basic heuristic for experience
+        elif re.search(r"master'?s?|m\.s\.|m\.eng|mba|msc|m\.tech|m\.a\.", lower_raw):
+            edu = "Master's Degree"
+        elif re.search(r"bachelor'?s?|b\.s\.|b\.e\.|b\.tech|b\.a\.|b\.eng|undergraduate", lower_raw):
+            edu = "Bachelor's Degree"
+        elif re.search(r"associates?|associate'?s?|diploma|a\.s\.|a\.a\.", lower_raw):
+            edu = "Associate's / Diploma"
+
+        # Experience years — take max of all numeric mentions near "year"/"yr"
         exp_years = 0
-        exp_matches = re.findall(r'(\d+)(?:\+)?\s+(?:years|yrs)', lower_raw)
+        exp_matches = re.findall(r'(\d+)\+?\s*(?:years?|yrs?)', lower_raw)
         if exp_matches:
             try:
-                exp_years = max([int(y) for y in exp_matches])
-            except:
+                exp_years = max(int(y) for y in exp_matches if int(y) < 50)
+            except Exception:
                 pass
-                
+
         return email, phone, edu, exp_years
 
-    def analyze(self) -> AnalysisResult:
+    def analyze(self, filename: str = "") -> AnalysisResult:
         content_score = self.calculate_cosine_similarity()
         skill_score, matched, missing = self.calculate_skill_match()
-        
-        
-        final_score = (content_score * 0.4) + (skill_score * 0.6)
 
-        
-        reasoning_text = self.generate_reasoning(final_score, matched, missing)
+        # Weighted: 60% skills + 40% content
+        final_score = (skill_score * 0.6) + (content_score * 0.4)
+
         email, phone, edu, exp_years = self.extract_contact_info()
+        reasoning_text = self.generate_reasoning(final_score, matched, missing, exp_years, filename)
 
         return AnalysisResult(
             match_score=round(final_score * 100, 2),
             skill_score=round(skill_score * 100, 2),
             content_score=round(content_score * 100, 2),
             reasoning=reasoning_text,
-            found_skills=list(matched),
-            missing_skills=list(missing),
+            found_skills=sorted(matched),
+            missing_skills=sorted(missing),
             status="success",
             email=email,
             phone=phone,
@@ -201,8 +286,22 @@ class MatchingEngine:
             experience_years=exp_years
         )
 
+    def analyze_batch(self, resumes: List[Tuple[str, str]]) -> List[AnalysisResult]:
+        """
+        Analyze multiple resumes against this JD.
+        resumes: list of (resume_text, filename) tuples.
+        Returns results sorted by match_score descending.
+        """
+        results = []
+        for resume_text, filename in resumes:
+            engine = MatchingEngine(jd_text=self.jd_raw, resume_text=resume_text)
+            result = engine.analyze(filename=filename)
+            results.append(result)
+        results.sort(key=lambda r: r.match_score, reverse=True)
+        return results
 
-app = FastAPI(title="Enterprise Resume Screener API", version="2.1.0")
+
+app = FastAPI(title="Enterprise Resume Screener API", version="2.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -217,7 +316,7 @@ async def screen_resume_file(job_description: str = Form(...), file: UploadFile 
     logger.info(f"Analyzing file: {file.filename}")
     resume_text = DocumentParser.parse_file(file)
     engine = MatchingEngine(job_description, resume_text)
-    return engine.analyze()
+    return engine.analyze(filename=file.filename)
 
 if __name__ == "__main__":
     import uvicorn

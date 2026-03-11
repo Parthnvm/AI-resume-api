@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import os
+from dotenv import load_dotenv
+
+# Load .env before initialising the app so GEMINI_API_KEY etc. are available
+load_dotenv()
+
 from app import create_app
+
 
 # Create the Flask application instance
 app = create_app()

@@ -1,25 +1,27 @@
 import os
 import re
-import json
 import zipfile
-from io import BytesIO
 from pathlib import Path
 from pypdf import PdfReader
 
-# Import your custom engine directly
-# (This assumes resume_screener_api.py is in the root directory)
+# Import the core TF-IDF engine (root-level module)
 try:
     from resume_screener_api import MatchingEngine
 except ImportError:
-    # Fallback if Python can't find it automatically
     import sys
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from resume_screener_api import MatchingEngine
 
-# Get the absolute path to the root directory
+# Import Gemini AI engine (optional — degrades gracefully if key missing)
+try:
+    from app.ai_engine import analyze_with_gemini
+except ImportError:
+    from ai_engine import analyze_with_gemini
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
 import docx
+
 
 def extract_text(file_path: str) -> str:
     ext = file_path.lower().rsplit('.', 1)[-1]
@@ -29,27 +31,22 @@ def extract_text(file_path: str) -> str:
             reader = PdfReader(file_path)
             text = "".join((page.extract_text() or "") + "\n" for page in reader.pages)
         elif ext in ('docx', 'doc'):
-            # python-docx handles both .docx and many .doc files
             doc = docx.Document(file_path)
             text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
         elif ext == 'txt':
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 text = f.read()
         elif ext == 'rtf':
-            # Basic RTF stripping: remove control words and groups
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 raw = f.read()
-            # Remove RTF control words and braces
             text = re.sub(r'\\[a-z*]+[-\d]*\s?', ' ', raw)
             text = re.sub(r'[{}]', '', text)
             text = re.sub(r'\s+', ' ', text).strip()
         elif ext == 'odt':
-            # ODT is a zip containing content.xml
             with zipfile.ZipFile(file_path, 'r') as z:
                 if 'content.xml' in z.namelist():
                     with z.open('content.xml') as xf:
                         xml_content = xf.read().decode('utf-8', errors='ignore')
-                    # Strip XML tags
                     text = re.sub(r'<[^>]+>', ' ', xml_content)
                     text = re.sub(r'\s+', ' ', text).strip()
         return text
@@ -67,17 +64,37 @@ def load_text_file(filename: str, default_content: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-def analyze_single_resume(resume_text: str, filename: str, custom_jd: str = "") -> dict:
-    # Use the HR's custom text, otherwise fallback to the default markdown file
-    if custom_jd and custom_jd.strip():
-        job_desc = custom_jd
-    else:
-        job_desc = load_text_file("job_description.md", "Default Job Description...")
 
-    # Initialize your custom MatchingEngine with the context
-    engine = MatchingEngine(jd_text=job_desc, resume_text=resume_text)
-    
-    # Run the analysis
-    analysis_result = engine.analyze()
-    
-    return analysis_result.dict()
+def _tfidf_analyze(resume_text: str, jd_text: str, filename: str = "") -> dict:
+    """Run the local TF-IDF + skill matching engine and return a normalised dict."""
+    engine = MatchingEngine(jd_text=jd_text, resume_text=resume_text)
+    result = engine.analyze(filename=filename)
+    try:
+        return result.model_dump()   # Pydantic v2
+    except AttributeError:
+        return result.dict()          # Pydantic v1
+
+
+def analyze_single_resume(resume_text: str, filename: str = "", custom_jd: str = "") -> dict:
+    """
+    Analyze a single resume against a job description.
+
+    Priority:
+      1. Gemini AI engine  (if GEMINI_API_KEY is set)
+      2. TF-IDF + skill matching engine  (always available as fallback)
+
+    Returns a dict with keys:
+      match_score, skill_score, content_score, reasoning,
+      found_skills, missing_skills, status,
+      email, phone, education, experience_years
+    """
+    job_desc = custom_jd.strip() if custom_jd and custom_jd.strip() else \
+        load_text_file("job_description.md", "Default Job Description...")
+
+    # 1 — Try Gemini
+    ai_result = analyze_with_gemini(resume_text, job_desc, filename)
+    if ai_result is not None:
+        return ai_result
+
+    # 2 — Fall back to TF-IDF
+    return _tfidf_analyze(resume_text, job_desc, filename)
