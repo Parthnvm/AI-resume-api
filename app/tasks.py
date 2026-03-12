@@ -106,7 +106,8 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
                                 # Use correct keys from AnalysisResult
                                 analysis.total_score = result.get('match_score', 0)
                                 analysis.technical_skills_score = result.get('skill_score', 0)
-                                analysis.experience_score = result.get('content_score', 0)
+                                analysis.industry_relevance_score = result.get('content_score', 0)
+                                analysis.experience_score = result.get('experience_years', 0)  # Correct key for experience_score
                                 analysis.reasoning_summary = result.get('reasoning', '')
                                 analysis.key_strengths = json.dumps(result.get('found_skills', []))
                                 analysis.concerns = json.dumps(result.get('missing_skills', []))
@@ -122,10 +123,18 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
                                 # Only count as processed after successful extraction + analysis.
                                 extracted_files.append(new_upload)
+                            else:
+                                new_upload.status = 'failed'
+                                db.session.commit()
 
                         except Exception as parse_e:
                             print(f"Error parsing {filename}: {parse_e}")
                             db.session.rollback()
+                            try:
+                                new_upload.status = 'failed'
+                                db.session.commit()
+                            except Exception:
+                                db.session.rollback()
 
         except zipfile.BadZipFile:
             print("Invalid ZIP archive provided.")

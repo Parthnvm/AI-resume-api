@@ -135,6 +135,16 @@ def _safe_int(value, default: int = 0) -> int:
         return default
 
 
+def _safe_float(value, default: float = 0.0) -> float:
+    """Safely parse *value* to float; return *default* for non-numeric inputs."""
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value).replace('%', '').strip())
+    except (ValueError, TypeError):
+        return default
+
+
 def _normalise(r: dict) -> dict:
     """Normalise a single result dict — handle camelCase aliases from the model."""
     def _get(*keys, default=None):
@@ -145,9 +155,9 @@ def _normalise(r: dict) -> dict:
         return default
 
     return {
-        "match_score":      round(float(_get("matchScore",    "matchscore",    "match_score",    default=0)), 2),
-        "skill_score":      round(float(_get("skillScore",    "skillscore",    "skill_score",    default=0)), 2),
-        "content_score":    round(float(_get("contentScore",  "contentscore",  "content_score",  default=0)), 2),
+        "match_score":      round(_safe_float(_get("matchScore",    "matchscore",    "match_score",    default=0)), 2),
+        "skill_score":      round(_safe_float(_get("skillScore",    "skillscore",    "skill_score",    default=0)), 2),
+        "content_score":    round(_safe_float(_get("contentScore",  "contentscore",  "content_score",  default=0)), 2),
         "reasoning":        str(_get("reasoning", default="")),
         "found_skills":     _coerce_list(_get("foundSkills",   "found_skills",   "foundsills")),
         "missing_skills":   _coerce_list(_get("missingSkills",  "missing_skills",  "missingskills")),
