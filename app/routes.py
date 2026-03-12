@@ -386,7 +386,8 @@ def analyze(upload_id):
             
         analysis.total_score = result.get('match_score', 0)
         analysis.technical_skills_score = result.get('skill_score', 0)
-        analysis.experience_score = result.get('content_score', 0)
+        analysis.industry_relevance_score = result.get('content_score', 0)
+        analysis.experience_score = 0.0  # Computed elsewhere based on JD expectations
         analysis.reasoning_summary = result.get('reasoning', "")
         
         # Save exact JD without fallbacks
