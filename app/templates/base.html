@@ -41,7 +41,35 @@
         /* Hide scrollbar globally */
         html { scrollbar-width: none; }
         html::-webkit-scrollbar { display: none; }
-
+    </style>
+    <style>
+        /* Global button hover scale - using vanilla CSS to avoid stacking context issues */
+        button:not(:disabled),
+        input[type="submit"]:not(:disabled),
+        input[type="button"]:not(:disabled),
+        a.btn {
+            transition: transform 0.2s ease-out, background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out;
+            /* Stable base transform keeps the element on the same rendering path before/during/after animation.
+               This prevents the browser from subpixel-snapping text differently on each frame (the jitter/blur effect). */
+            transform: translate3d(0, 0, 0);
+            /* Force consistent antialiasing so text doesn't re-sharpen between frames */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        button:not(:disabled):hover,
+        input[type="submit"]:not(:disabled):hover,
+        input[type="button"]:not(:disabled):hover,
+        a.btn:hover {
+            transform: scale(1.05) translate3d(0, 0, 0);
+        }
+        button:not(:disabled):active,
+        input[type="submit"]:not(:disabled):active,
+        input[type="button"]:not(:disabled):active,
+        a.btn:active {
+            transform: scale(0.95) translate3d(0, 0, 0);
+        }
+    </style>
+    <style>
         /* Custom Utilities and Animations */
         body {
             background-color: #f8fafc;
