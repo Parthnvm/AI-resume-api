@@ -38,6 +38,10 @@
     <!-- AlpineJS for interactive UI components -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
+        /* Hide scrollbar globally */
+        html { scrollbar-width: none; }
+        html::-webkit-scrollbar { display: none; }
+
         /* Custom Utilities and Animations */
         body {
             background-color: #f8fafc;
@@ -148,6 +152,7 @@
                         </div>
                         
                         {% if current_user.user_type == 'hr' %}
+
                         <button onclick="navigator.clipboard.writeText('{{ current_user.api_key }}'); alert('API Key copied to clipboard!');"
                                 class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-full font-medium hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors tooltip"
                                 title="Copy programmatic API Key (Bearer Token)">

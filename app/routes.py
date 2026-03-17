@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 from werkzeug.utils import secure_filename
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, send_from_directory
@@ -6,6 +6,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db, bcrypt
 from app.models import User, ResumeUpload, CandidateAnalysis
 from app.utils import extract_text, analyze_single_resume
+from app.ai_engine import analyze_resume_module
 
 # Blueprints
 auth_bp = Blueprint('auth_bp', __name__)
@@ -161,6 +162,7 @@ def dashboard():
     
     return render_template('hr_dashboard.html', jobs=jobs)
 
+
 @hr_bp.route('/api/candidates')
 @login_required
 def get_candidates():
@@ -218,7 +220,8 @@ def get_candidates():
     from flask import url_for
     for c in pagination.items:
         score = c.analysis.total_score if c.analysis else 0
-        reasoning = c.analysis.reasoning_summary if c.analysis else "Not yet analyzed"
+        from app.ai_engine import _strip_batch_prefix
+        reasoning = _strip_batch_prefix(c.analysis.reasoning_summary) if c.analysis else "Not yet analyzed"
         job_t = c.job.title if hasattr(c, 'job') and c.job else "General Profile"
         
         candidates_list.append({
@@ -318,49 +321,6 @@ def batch_upload():
     else:
         return jsonify({"error": "File must be a .zip archive"}), 400
 
-@hr_bp.route('/api/analytics/trends')
-@login_required
-def analytics_trends():
-    if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
-    from sqlalchemy import text
-    query = text("""
-        SELECT DATE(upload_date) as day, COUNT(*) as count 
-        FROM resume_uploads 
-        GROUP BY DATE(upload_date) 
-        ORDER BY day DESC LIMIT 30
-    """)
-    result = db.session.execute(query)
-    
-    data = [{"date": row[0], "count": row[1]} for row in result]
-    return jsonify(data[::-1])  # chronologically sorted
-
-@hr_bp.route('/api/analytics/skills')
-@login_required
-def analytics_skills():
-    if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
-    analyses = CandidateAnalysis.query.order_by(CandidateAnalysis.id.desc()).limit(200).all()
-    
-    skill_counts = {}
-    import json
-    for a in analyses:
-        if a.concerns:
-            try:
-                concerns = json.loads(a.concerns)
-                for missing in concerns:
-                    # Naively extracting the first few words as a "skill name"
-                    k = str(missing).lower().split('.')[0].strip()
-                    # Filter out long strings
-                    if k and len(k) < 40:
-                        skill_counts[k] = skill_counts.get(k, 0) + 1
-            except:
-                pass
-                
-    sorted_skills = sorted(skill_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    data = [{"skill": k.title(), "frequency": v} for k, v in sorted_skills]
-    
-    return jsonify(data)
 
 @hr_bp.route('/analyze/<upload_id>', methods=['POST'])
 @login_required
@@ -498,42 +458,120 @@ def export_csv():
     from io import StringIO
     from flask import Response
     
-    # Export shortlisted candidates
+    # Export shortlisted candidates - explicitly fetch analysis to avoid lazy-load issues
     candidates = ResumeUpload.query.filter_by(status='shortlisted').all()
     
     output = StringIO()
     writer = csv.writer(output)
-    
+
     # Write header
     writer.writerow([
-        'Candidate Name', 'Email (Account)', 'Extracted Phone', 
-        'Extracted Email', 'Education Profile', 'Years Experience', 
-        'AI Match Score (%)', 'AI Decision/Key Strengths'
+        'Candidate Name', 'Email (Account)', 'Extracted Phone',
+        'Extracted Email', 'Education Profile', 'Years Experience',
+        'AI Match Score (%)', 'AI Key Strengths', 'AI Reasoning'
     ])
-    
+
     for c in candidates:
         name = f"{c.student.first_name} {c.student.last_name}"
         act_email = c.student.email
-        ex_phone = c.extracted_phone or "N/A"
-        ex_email = c.extracted_email or "N/A"
-        ex_edu = c.extracted_education or "N/A"
+        ex_phone = c.extracted_phone or 'N/A'
+        ex_email = c.extracted_email or 'N/A'
+        ex_edu = c.extracted_education or 'N/A'
         ex_exp = c.extracted_experience_years or 0
-        
-        score = c.analysis.total_score if c.analysis else 0
-        
-        strengths = ""
-        if c.analysis and c.analysis.key_strengths:
-            try:
-                s_list = json.loads(c.analysis.key_strengths)
-                strengths = ", ".join(s_list)
-            except:
-                strengths = c.analysis.reasoning_summary or ""
-        
-        writer.writerow([name, act_email, ex_phone, ex_email, ex_edu, ex_exp, score, strengths])
-        
+
+        # Explicitly query analysis to avoid relationship lazy-loading surprises
+        analysis = CandidateAnalysis.query.filter_by(upload_id=c.id).first()
+
+        score = analysis.total_score if analysis else 0
+        strengths = ''
+        reasoning = ''
+
+        if analysis:
+            from app.ai_engine import _strip_batch_prefix
+            reasoning = _strip_batch_prefix(analysis.reasoning_summary or '')
+            if analysis.key_strengths:
+                try:
+                    s_list = json.loads(analysis.key_strengths)
+                    strengths = ', '.join(str(s) for s in s_list) if s_list else ''
+                except Exception:
+                    strengths = analysis.key_strengths  # use raw stored value
+            if not strengths and reasoning:
+                strengths = reasoning.split('\n')[0]
+
+        writer.writerow([name, act_email, ex_phone, ex_email, ex_edu, ex_exp, score, strengths, reasoning])
+
     output.seek(0)
     return Response(
         output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=shortlisted_candidates.csv"}
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment;filename=shortlisted_candidates.csv'}
     )
+
+@hr_bp.route('/api/bulk_analyze', methods=['POST'])
+@login_required
+def bulk_analyze():
+    if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
+
+    # Find all uploads that do not yet have an analysis record
+    analyzed_ids = db.session.query(CandidateAnalysis.upload_id)
+    pending_uploads = ResumeUpload.query.filter(
+        ~ResumeUpload.id.in_(analyzed_ids)
+    ).all()
+
+    if not pending_uploads:
+        return jsonify({"message": "All resumes are already analyzed.", "count": 0, "errors": 0})
+
+    processed = 0
+    errors = 0
+
+    for upload in pending_uploads:
+        try:
+            text = extract_text(upload.file_path)
+            if not text:
+                errors += 1
+                continue
+
+            # Use the job's description if the resume was submitted for a specific role
+            jd = ''
+            try:
+                if upload.job_id:
+                    from app.models import JobDescription
+                    job = JobDescription.query.get(upload.job_id)
+                    if job:
+                        jd = job.description or ''
+            except Exception:
+                jd = ''
+
+            result = analyze_single_resume(text, upload.original_filename, jd)
+
+            analysis = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
+            if not analysis:
+                analysis = CandidateAnalysis(upload_id=upload.id)
+                db.session.add(analysis)
+
+            analysis.total_score = result.get('match_score', 0)
+            analysis.technical_skills_score = result.get('skill_score', 0)
+            analysis.industry_relevance_score = result.get('content_score', 0)
+            analysis.experience_score = 0.0
+            analysis.reasoning_summary = result.get('reasoning', '')
+            analysis.job_description = jd
+            analysis.key_strengths = json.dumps(result.get('found_skills', []))
+            analysis.concerns = json.dumps(result.get('missing_skills', []))
+
+            upload.extracted_email = result.get('email', '')
+            upload.extracted_phone = result.get('phone', '')
+            upload.extracted_education = result.get('education', '')
+            upload.extracted_experience_years = result.get('experience_years', 0)
+            upload.status = 'analyzed'
+
+            db.session.commit()
+            processed += 1
+        except Exception as e:
+            db.session.rollback()
+            errors += 1
+
+    return jsonify({
+        "message": f"Bulk analysis complete. {processed} resume(s) processed.",
+        "processed": processed,
+        "errors": errors
+    })

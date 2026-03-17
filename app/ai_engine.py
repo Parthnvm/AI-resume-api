@@ -77,7 +77,6 @@ Return ONLY the JSON object. No markdown fences. No explanation outside the JSON
 BATCH_SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
     "Return ONLY the JSON object. No markdown fences. No explanation outside the JSON.",
     "For BATCH input return a JSON ARRAY of the above objects sorted descending by match_score.\n"
-    "Prefix each reasoning with 'Batch ID: [filename]\\n'.\n"
     "Return ONLY the JSON array. No markdown fences."
 )
 
@@ -145,6 +144,14 @@ def _safe_float(value, default: float = 0.0) -> float:
         return default
 
 
+
+def _strip_batch_prefix(text: str) -> str:
+    """Remove legacy 'Batch ID: ...' prefix lines written by older BATCH_SYSTEM_PROMPT."""
+    lines = text.splitlines()
+    cleaned = [l for l in lines if not l.strip().startswith("Batch ID:")]
+    return "\n".join(cleaned).strip()
+
+
 def _normalise(r: dict) -> dict:
     """Normalise a single result dict — handle camelCase aliases from the model."""
     def _get(*keys, default=None):
@@ -158,7 +165,7 @@ def _normalise(r: dict) -> dict:
         "match_score":      round(_safe_float(_get("matchScore",    "matchscore",    "match_score",    default=0)), 2),
         "skill_score":      round(_safe_float(_get("skillScore",    "skillscore",    "skill_score",    default=0)), 2),
         "content_score":    round(_safe_float(_get("contentScore",  "contentscore",  "content_score",  default=0)), 2),
-        "reasoning":        str(_get("reasoning", default="")),
+        "reasoning":        _strip_batch_prefix(str(_get("reasoning", default=""))),
         "found_skills":     _coerce_list(_get("foundSkills",   "found_skills",   "foundsills")),
         "missing_skills":   _coerce_list(_get("missingSkills",  "missing_skills",  "missingskills")),
         "status":           str(_get("status", default="success")),
@@ -296,4 +303,80 @@ def batch_analyze_with_gemini(resumes: list, jd_text: str) -> Optional[list]:
                     break
 
     logger.error("All Gemini models failed for batch. Falling back to TF-IDF.")
+    return None
+
+# ── Resume Analytics Module (Standalone) ──────────────────────────────────────
+
+ANALYZE_RESUME_PROMPT = """You are an advanced Resume Screening AI.
+Analyze the provided resume text against general professional standards and extract key insights.
+Return ONLY a valid JSON object with no extra text.
+
+Required JSON schema:
+{
+  "experienceScore": 75,
+  "educationScore": 60,
+  "skillMatchScore": 85,
+  "strengths": ["Strong React skills", "Solid 3 years of experience"],
+  "weaknesses": ["Limited backend exposure", "No formal certification"]
+}
+
+Scoring Methodology (0-100 scale for each):
+- experienceScore: Based on years of experience, depth of roles, and career progression.
+- educationScore: Based on level of education, relevance to tech/professional roles, and certifications.
+- skillMatchScore: Based on the breadth, depth, and modern relevance of listed skills.
+
+Return ONLY the JSON object. No explanation outside the JSON."""
+
+def analyze_resume_module(resume_text: str) -> Optional[dict]:
+    """
+    Analyze a resume to generate an analytics breakdown (scores & insights).
+    """
+    client = _get_client()
+    if not client:
+        return None
+
+    from google.genai import types
+
+    resume_snippet = resume_text[:6000]
+    prompt = f"RESUME:\n{resume_snippet}"
+
+    for model in [GEMINI_MODELS[0]]: # Prefer flash over flash-lite for this open-ended task
+        for attempt in range(2):
+            try:
+                if REQUEST_DELAY_SECONDS > 0:
+                    time.sleep(REQUEST_DELAY_SECONDS)
+
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=ANALYZE_RESUME_PROMPT,
+                        temperature=0.2,
+                        max_output_tokens=1024,
+                        response_mime_type="application/json",
+                    ),
+                )
+                raw = _parse_json_response(response.text)
+                if raw is None or not isinstance(raw, dict):
+                    break
+                
+                # Normalize return just to be safe
+                return {
+                    "experienceScore": _safe_float(raw.get("experienceScore", 0)),
+                    "educationScore": _safe_float(raw.get("educationScore", 0)),
+                    "skillMatchScore": _safe_float(raw.get("skillMatchScore", 0)),
+                    "strengths": _coerce_list(raw.get("strengths", [])),
+                    "weaknesses": _coerce_list(raw.get("weaknesses", []))
+                }
+
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    wait = 30 if attempt == 0 else 0
+                    if wait: time.sleep(wait)
+                    continue
+                else:
+                    logger.error(f"Gemini error in analyze_resume_module: {e}")
+                    break
+
     return None
