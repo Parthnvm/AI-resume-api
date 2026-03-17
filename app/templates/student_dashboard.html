@@ -70,7 +70,7 @@
               <!-- Button that triggers the upload modal with this job pre-selected -->
               <button
                 onclick="applyForJob('{{ job.id }}', '{{ job.title }}')"
-                class="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-colors"
+                class="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-all"
               >
                 Apply Now
               </button>
@@ -193,7 +193,7 @@
             >
               <label
                 for="file-upload"
-                class="relative cursor-pointer rounded-md font-semibold text-brand-600 dark:text-brand-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500 transition-colors"
+                class="relative cursor-pointer rounded-md font-semibold text-brand-600 dark:text-brand-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-600 focus-within:ring-offset-2 hover:text-brand-500 transition-all"
               >
                 <span>Click to upload</span>
                 <input
@@ -221,7 +221,7 @@
         <div class="mt-6">
           <button
             type="submit"
-            class="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-semibold text-white bg-slate-900 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-300 active:scale-[0.98]"
+            class="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-semibold text-white bg-slate-900 dark:bg-brand-600 hover:bg-brand-600 dark:hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all duration-300 active:scale-95"
           >
             Submit Application
           </button>
@@ -348,7 +348,7 @@
                     {% if upload.analysis %}
                     <button
                       onclick="viewInsights('{{ upload.id }}')"
-                      class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold"
+                      class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 hover:bg-brand-100 dark:hover:bg-brand-900/50 px-3 py-1.5 rounded-lg transition-all inline-flex items-center text-xs font-semibold"
                     >
                       <i class="fa-solid fa-chart-pie mr-1.5"></i> Insights
                     </button>
@@ -356,7 +356,7 @@
                     <a
                       href="{{ url_for('hr_bp.view_resume', upload_id=upload.id) }}"
                       target="_blank"
-                      class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-colors inline-flex items-center text-xs font-semibold tooltip"
+                      class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg transition-all inline-flex items-center text-xs font-semibold tooltip"
                       title="View Document"
                     >
                       <i class="fa-regular fa-eye"></i>
@@ -417,7 +417,7 @@
         <button
           type="button"
           onclick="closeInsights()"
-          class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
+          class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 dark:hover:text-slate-300 transition-all focus:outline-none"
         >
           <span class="sr-only">Close</span>
           <i class="fa-solid fa-xmark text-xl"></i>
@@ -563,7 +563,7 @@
         <button
           type="button"
           onclick="closeInsights()"
-          class="inline-flex justify-center rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none transition-colors"
+          class="inline-flex justify-center rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none transition-all"
         >
           Close
         </button>
