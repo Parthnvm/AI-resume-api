@@ -46,3 +46,7 @@ resumes/*
 !resumes/.gitkeep
 results/*
 !results/.gitkeep
+
+.agent/
+agents/
+analytic-frontend/

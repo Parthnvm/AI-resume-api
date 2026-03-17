@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block content %}
+﻿{% extends "base.html" %} {% block content %}
 
 <div class="mb-8 fade-in">
   <h1
@@ -254,11 +254,7 @@
           >
             <thead class="bg-slate-50/80 dark:bg-slate-700/50">
               <tr>
-                <th
-                  scope="col"
-                  class="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
-                >
-                  Document
+                <th scope="col" class="px-4 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/3">Document
                 </th>
                 <th
                   scope="col"
@@ -287,10 +283,10 @@
               <tr
                 class="hover:bg-slate-50/50 dark:hover:bg-slate-700/40 transition-colors duration-200 group"
               >
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-normal break-words max-w-[200px] sm:max-w-xs md:max-w-sm">
                   <div class="flex items-center">
                     <div
-                      class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 flex items-center justify-center mr-3"
+                      class="flex-shrink-0 w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 flex items-center justify-center mr-3"
                     >
                       <i class="fa-solid fa-file-lines"></i>
                     </div>
@@ -302,11 +298,11 @@
                   </div>
                 </td>
                 <td
-                  class="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-medium"
+                  class="px-4 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 font-medium"
                 >
                   {{ upload.upload_date.strftime('%b %d, %Y') }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap">
                   {% if upload.status == 'pending' %}
                   <span
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-700/50"
@@ -346,7 +342,7 @@
                   {% endif %}
                 </td>
                 <td
-                  class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                  class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium"
                 >
                   <div class="flex justify-end items-center space-x-2">
                     {% if upload.analysis %}
@@ -421,7 +417,7 @@
         <button
           type="button"
           onclick="closeInsights()"
-          class="bg-white dark:bg-slate-800 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300 focus:outline-none"
+          class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus:outline-none"
         >
           <span class="sr-only">Close</span>
           <i class="fa-solid fa-xmark text-xl"></i>
@@ -509,7 +505,7 @@
                 class="text-2xl font-bold text-slate-800 dark:text-slate-200"
                 id="i-exp"
               >
-                0/10
+                0/100
               </div>
             </div>
           </div>
@@ -694,7 +690,7 @@
       document.getElementById("i-tech").innerText =
         `${data.technical_skills_score}/10`;
       document.getElementById("i-exp").innerText =
-        `${data.experience_score}/10`;
+        `${data.experience_score}/100`;
       document.getElementById("i-reasoning").innerText = data.reasoning;
 
       // List items
@@ -740,3 +736,4 @@
 </script>
 
 {% endblock %}
+

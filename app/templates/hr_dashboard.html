@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block content %}
 
 <div x-data="hrDashboard()" x-init="initDashboard()">
@@ -15,7 +15,7 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-slate-400"></i>
                     </div>
-                    <input type="text" x-model.debounce.500ms="searchQuery" @input="fetchCandidates(1)" placeholder="Search candidates..." 
+                    <input type="text" x-model="searchQuery" placeholder="Search candidates..." 
                            class="pl-10 pr-4 py-2 text-sm border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:bg-slate-800 dark:text-slate-200 w-64">
                 </div>
                 <div class="inline-flex rounded-lg shadow-sm">
@@ -109,10 +109,19 @@
         
         <div x-show="selectedCandidates.length === 0" class="text-sm text-slate-400 italic">Select candidates to perform bulk actions.</div>
         
-        <div>
+        <div class="flex items-center space-x-2">
             <a href="{{ url_for('hr_bp.export_csv') }}" class="inline-flex items-center text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors shadow-sm">
                 <i class="fa-solid fa-download mr-2 text-slate-400"></i> Export Shortlisted (CSV)
             </a>
+                <button @click="openBulkConfirm()" :disabled="bulkAnalyzing"
+                        class="inline-flex items-center text-sm font-semibold text-white bg-brand-600 border border-brand-600 rounded-lg px-4 py-2 hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                    <template x-if="!bulkAnalyzing">
+                        <span><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Bulk Analyze All</span>
+                    </template>
+                    <template x-if="bulkAnalyzing">
+                        <span><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Analyzing...</span>
+                    </template>
+                </button>
         </div>
     </div>
 
@@ -204,9 +213,9 @@
                                     <div class="text-sm italic text-slate-400 dark:text-slate-500">Not extracted</div>
                                 </template>
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap">
+                            <td class="px-4 py-4 whitespace-nowrap text-center">
                                 <template x-if="c.has_analysis">
-                                    <div class="flex items-center cursor-help tooltip" :title="c.reasoning">
+                                    <div class="flex items-center justify-center">
                                         <div class="relative w-10 h-10 mr-3">
                                             <svg class="w-full h-full" viewBox="0 0 36 36">
                                                 <path class="text-slate-100 dark:text-slate-800" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
@@ -214,10 +223,13 @@
                                             </svg>
                                             <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-300" x-text="c.score"></div>
                                         </div>
-                                        
-                                        <div class="flex flex-col">
+                                        <div class="flex items-center space-x-1">
                                             <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">AI Score</span>
-                                            <span class="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]"><i class="fa-solid fa-bullseye text-slate-400 dark:text-slate-500 mr-1"></i><span x-text="c.job_title"></span></span>
+                                            <button @click.stop="openReasoning(c)"
+                                                    class="flex items-center justify-center w-4 h-4 text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 transition-colors"
+                                                    title="View analysis details">
+                                                <i class="fa-solid fa-circle-info text-sm"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </template>
@@ -458,6 +470,100 @@
         </div>
     </div>
 
+    <!-- â”€â”€ AI Reasoning Detail Modal â”€â”€ -->
+    <div x-show="showReasoningModal" class="relative z-50" style="display:none;">
+        <div x-show="showReasoningModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showReasoningModal = false"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div x-show="showReasoningModal"
+                 x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 @click.away="showReasoningModal = false"
+                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg">
+                <!-- Header -->
+                <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center">
+                            <i class="fa-solid fa-circle-info text-brand-600 dark:text-brand-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100" x-text="activeReasoning.name"></h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">AI Analysis Details</p>
+                        </div>
+                    </div>
+                    <button @click="showReasoningModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <!-- Score row -->
+                <div class="flex items-center space-x-4 px-6 py-4 bg-slate-50/60 dark:bg-slate-700/30 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl font-bold" :class="activeReasoning.score >= 75 ? 'text-emerald-500' : (activeReasoning.score >= 50 ? 'text-amber-500' : 'text-red-500')" x-text="activeReasoning.score + '%'"></span>
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Match Score</span>
+                    </div>
+                    <div class="w-px h-6 bg-slate-200 dark:bg-slate-600"></div>
+                    <div class="flex items-center space-x-1.5">
+                        <i class="fa-solid fa-bullseye text-slate-400 text-xs"></i>
+                        <span class="text-xs text-slate-500 dark:text-slate-400" x-text="activeReasoning.job_title"></span>
+                    </div>
+                </div>
+                <!-- Reasoning body -->
+                <div class="px-6 py-5">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">AI Reasoning</p>
+                    <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line" x-text="activeReasoning.reasoning || 'No reasoning available.'"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- â”€â”€ Bulk Analyze Confirmation Modal â”€â”€ -->
+    <div x-show="showBulkModal" class="relative z-50" style="display:none;">
+        <div x-show="showBulkModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div x-show="showBulkModal"
+                 x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 @click.away="showBulkModal = false"
+                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                <div class="flex items-start mb-4">
+                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center mr-4">
+                        <i class="fa-solid fa-wand-magic-sparkles text-brand-600 dark:text-brand-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Bulk Analyze All Resumes</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">This will run AI analysis on every resume that hasn't been processed yet. Depending on the number of resumes, this may take a while.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showBulkModal = false"
+                        class="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="showBulkModal = false; bulkAnalyze()"
+                        class="px-4 py-2 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
+                        <i class="fa-solid fa-play mr-1.5"></i> Yes, Analyze All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- â”€â”€ Toast Notification â”€â”€ -->
+    <div class="fixed top-20 right-4 z-[200] w-full max-w-sm pointer-events-none"
+         x-show="showToast"
+         x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         style="display:none;">
+        <div class="pointer-events-auto flex items-start p-4 rounded-xl shadow-lg border backdrop-blur-md"
+             :class="toastType === 'success' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200' : 'bg-red-50/95 border-red-200 text-red-800 dark:bg-red-900/60 dark:border-red-700 dark:text-red-200'">
+            <i class="text-lg mr-3 mt-0.5 flex-shrink-0"
+               :class="toastType === 'success' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"></i>
+            <p class="text-sm font-medium flex-1" x-text="toastMessage"></p>
+            <button @click="showToast = false" class="ml-3 opacity-60 hover:opacity-100 pointer-events-auto transition-opacity">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
 </div>
 
 <!-- AlpineJS Dashboard Controller -->
@@ -491,10 +597,23 @@
             
             // Bulk Actions
             selectedCandidates: [],
+            bulkAnalyzing: false,
+            showBulkModal: false,
+            showReasoningModal: false,
+            activeReasoning: {},
+            showToast: false,
+            toastMessage: '',
+            toastType: 'success',
+            toastTimer: null,
 
             async initDashboard() {
                 this.fetchStats();
                 this.fetchCandidates(1);
+                let _searchTimer = null;
+                this.$watch('searchQuery', () => {
+                    clearTimeout(_searchTimer);
+                    _searchTimer = setTimeout(() => this.fetchCandidates(1), 500);
+                });
             },
             
             async fetchStats() {
@@ -538,6 +657,11 @@
                 }
             },
             
+            setFilter(status) {
+                this.filterStatus = status;
+                this.fetchCandidates(1);
+            },
+
             clearFilters() {
                 this.filterStatus = '';
                 this.filterJob = '';
@@ -577,6 +701,47 @@
                     else alert('Analysis formulation error.');
                 } catch(e) {} finally {
                     this.analyzing = false;
+                }
+            },
+
+            openReasoning(c) {
+                this.activeReasoning = {
+                    name: c.first_name + ' ' + c.last_name,
+                    score: c.score,
+                    job_title: c.job_title,
+                    reasoning: c.reasoning
+                };
+                this.showReasoningModal = true;
+            },
+
+            openBulkConfirm() {
+                this.showBulkModal = true;
+            },
+
+            showNotification(message, type = 'success') {
+                this.toastMessage = message;
+                this.toastType = type;
+                this.showToast = true;
+                clearTimeout(this.toastTimer);
+                this.toastTimer = setTimeout(() => { this.showToast = false; }, 5000);
+            },
+
+            async bulkAnalyze() {
+                this.bulkAnalyzing = true;
+                try {
+                    const res = await fetch('/hr/api/bulk_analyze', { method: 'POST' });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.showNotification(data.message + (data.errors > 0 ? ` (${data.errors} failed)` : ''), 'success');
+                        this.fetchCandidates(this.currentPage);
+                        this.fetchStats();
+                    } else {
+                        this.showNotification('Bulk analysis failed: ' + (data.error || 'Unknown error'), 'error');
+                    }
+                } catch(e) {
+                    this.showNotification('Could not reach server.', 'error');
+                } finally {
+                    this.bulkAnalyzing = false;
                 }
             },
 
