@@ -43,7 +43,13 @@ class User(UserMixin, db.Model):
             return False
         if datetime.utcnow() > self.reset_token_expiry:
             return False
-        return hashlib.sha256(raw_token.encode()).hexdigest() == self.reset_token_hash
+        if not isinstance(raw_token, (str, bytes)):
+            return False
+        try:
+            token_bytes = raw_token.encode() if isinstance(raw_token, str) else raw_token
+            return hashlib.sha256(token_bytes).hexdigest() == self.reset_token_hash
+        except Exception:
+            return False
 
     def clear_reset_token(self):
         self.reset_token_hash = None

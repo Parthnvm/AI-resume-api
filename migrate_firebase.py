@@ -18,6 +18,17 @@ def migrate():
             print('  Column already exists (skipped): firebase_uid')
         else:
             raise
+    # Ensure unique index matches the SQLAlchemy model (unique=True, index=True)
+    try:
+        cur.execute(
+            'CREATE UNIQUE INDEX ix_users_firebase_uid ON users(firebase_uid)'
+        )
+        print('  Created unique index: ix_users_firebase_uid')
+    except sqlite3.OperationalError as e:
+        if 'already exists' in str(e).lower():
+            print('  Index already exists (skipped): ix_users_firebase_uid')
+        else:
+            raise
     conn.commit()
     conn.close()
     print('Migration complete.')

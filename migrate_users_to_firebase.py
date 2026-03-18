@@ -114,8 +114,10 @@ if failed:
 # ── Back-fill firebase_uid in local DB ───────────────────────────────────────
 print("\nUpdating local database with firebase_uid values...")
 updated = 0
+failed_uids = {import_users[f['index']].uid for f in failed}  # skip failed imports
 for u in import_users:
-    # We used our own UUID as the Firebase UID, so they match
+    if u.uid in failed_uids:
+        continue  # don't mark as migrated if Firebase import failed
     cur.execute(
         "UPDATE users SET firebase_uid = ? WHERE id = ?",
         (u.uid, u.uid)

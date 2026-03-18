@@ -55,6 +55,12 @@ def create_app():
     # Create DB tables
     with app.app_context():
         db.create_all()
-        
+
+    # Inject current_year into every template (used by base.html footer)
+    @app.context_processor
+    def inject_globals():
+        from datetime import datetime
+        return {'current_year': datetime.utcnow().year}
+
     return app
 
