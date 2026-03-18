@@ -45,11 +45,11 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
                 # Ensure the shared bulk-upload user exists exactly once,
                 # using a race-safe insert: try to commit, catch the unique-
                 # constraint IntegrityError, rollback, and re-fetch.
-                bulk_user = User.query.filter_by(email='bulk@apexhire.internal').first()
+                bulk_user = User.query.filter_by(email='bulk@smarthire.internal').first()
                 if not bulk_user:
                     try:
                         bulk_user = User(
-                            email='bulk@apexhire.internal',
+                            email='bulk@smarthire.internal',
                             password_hash='noop',
                             first_name='Bulk',
                             last_name='Upload',
@@ -59,7 +59,7 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
                         db.session.commit()
                     except IntegrityError:
                         db.session.rollback()
-                        bulk_user = User.query.filter_by(email='bulk@apexhire.internal').first()
+                        bulk_user = User.query.filter_by(email='bulk@smarthire.internal').first()
 
                 for file_info in zip_ref.infolist():
                     if file_info.filename.endswith('.pdf') and not file_info.filename.startswith('__MACOSX'):

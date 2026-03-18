@@ -18,7 +18,10 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.path.abspath('resumes')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
-    
+
+    # Firebase Auth — set FIREBASE_API_KEY in .env
+    app.config['FIREBASE_API_KEY'] = os.environ.get('FIREBASE_API_KEY', '')
+
     # Init extensions
     db.init_app(app)
     login_manager.init_app(app)
