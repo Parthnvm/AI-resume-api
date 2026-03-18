@@ -7,6 +7,7 @@ from app import db, bcrypt
 from app.models import User, ResumeUpload, CandidateAnalysis
 from app.utils import extract_text, analyze_single_resume
 from app.ai_engine import analyze_resume_module
+from app.firebase_auth import firebase_register, firebase_login, firebase_send_password_reset, FirebaseAuthError
 
 # Blueprints
 auth_bp = Blueprint('auth_bp', __name__)
@@ -29,33 +30,60 @@ def auth():
         action = request.form.get('action')
         
         if action == 'login':
-            email = request.form.get('email')
-            password = request.form.get('password')
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
             user = User.query.filter_by(email=email).first()
-            if user and bcrypt.check_password_hash(user.password_hash, password):
-                login_user(user)
-                return redirect(url_for(f'{user.user_type}_bp.dashboard'))
-            flash('Invalid email or password', 'error')
+
+            if not user:
+                flash('Invalid email or password', 'error')
+            else:
+                try:
+                    if user.firebase_uid:
+                        # Firebase is the password authority for this user
+                        firebase_login(email, password)
+                    else:
+                        # Legacy user: verify with bcrypt, then lazily migrate to Firebase
+                        if not bcrypt.check_password_hash(user.password_hash, password):
+                            raise FirebaseAuthError('INVALID_LOGIN_CREDENTIALS')
+                        # Migrate: create Firebase account silently
+                        try:
+                            fb = firebase_register(email, password)
+                            user.firebase_uid = fb['localId']
+                            db.session.commit()
+                        except FirebaseAuthError:
+                            pass  # migration failed silently — user still logged in locally
+
+                    login_user(user)
+                    return redirect(url_for(f'{user.user_type}_bp.dashboard'))
+                except FirebaseAuthError as e:
+                    flash(str(e), 'error')
 
         elif action == 'register':
-            email = request.form.get('email')
-            password = request.form.get('password')
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
             user_type = request.form.get('user_type')
             
             if User.query.filter_by(email=email).first():
                 flash('Email already registered', 'error')
             else:
-                hashed = bcrypt.generate_password_hash(password).decode('utf-8')
-                new_user = User(
-                    email=email, password_hash=hashed, user_type=user_type,
-                    first_name=request.form.get('first_name'),
-                    last_name=request.form.get('last_name')
-                )
-                new_user.generate_api_key()
-                db.session.add(new_user)
-                db.session.commit()
-                login_user(new_user)
-                return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
+                try:
+                    fb = firebase_register(email, password)
+                    hashed = bcrypt.generate_password_hash(password).decode('utf-8')
+                    new_user = User(
+                        email=email,
+                        password_hash=hashed,
+                        user_type=user_type,
+                        firebase_uid=fb['localId'],
+                        first_name=request.form.get('first_name'),
+                        last_name=request.form.get('last_name')
+                    )
+                    new_user.generate_api_key()
+                    db.session.add(new_user)
+                    db.session.commit()
+                    login_user(new_user)
+                    return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
+                except FirebaseAuthError as e:
+                    flash(str(e), 'error')
 
     return render_template('auth.html')
 
@@ -64,6 +92,23 @@ def auth():
 def logout():
     logout_user()
     return redirect(url_for('auth_bp.auth'))
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for(f'{current_user.user_type}_bp.dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        try:
+            firebase_send_password_reset(email)
+        except Exception:
+            pass  # always silent — prevents email enumeration
+        flash('If that email is registered, a reset link has been sent. Check your inbox (and spam folder).', 'success')
+        return redirect(url_for('auth_bp.forgot_password'))
+
+    return render_template('forgot_password.html')
 
 # --- STUDENT ROUTES ---
 @student_bp.route('/dashboard')

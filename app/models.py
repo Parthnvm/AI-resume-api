@@ -1,9 +1,9 @@
 from app import db
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
-
 import secrets
+import hashlib
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -18,12 +18,42 @@ class User(UserMixin, db.Model):
     user_type = db.Column(db.String(20), nullable=False)  # 'student' or 'hr'
     is_active = db.Column(db.Boolean, default=True)
     api_key = db.Column(db.String(64), unique=True, index=True)
+    firebase_uid = db.Column(db.String(128), nullable=True, unique=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Password-reset columns
+    reset_token_hash = db.Column(db.String(128), nullable=True, index=True)
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)
 
     uploads = db.relationship('ResumeUpload', backref='student', lazy=True)
 
     def generate_api_key(self):
         self.api_key = secrets.token_urlsafe(32)
+
+    # --- Password-reset helpers ---
+    def set_reset_token(self):
+        """Generate a raw token, store its hash+expiry, return the raw token."""
+        raw = secrets.token_urlsafe(32)
+        self.reset_token_hash = hashlib.sha256(raw.encode()).hexdigest()
+        self.reset_token_expiry = datetime.utcnow() + timedelta(minutes=30)
+        return raw
+
+    def verify_reset_token(self, raw_token):
+        """Return True if raw_token matches the stored hash and hasn't expired."""
+        if not self.reset_token_hash or not self.reset_token_expiry:
+            return False
+        if datetime.utcnow() > self.reset_token_expiry:
+            return False
+        if not isinstance(raw_token, (str, bytes)):
+            return False
+        try:
+            token_bytes = raw_token.encode() if isinstance(raw_token, str) else raw_token
+            return hashlib.sha256(token_bytes).hexdigest() == self.reset_token_hash
+        except Exception:
+            return False
+
+    def clear_reset_token(self):
+        self.reset_token_hash = None
+        self.reset_token_expiry = None
 
 class JobDescription(db.Model):
     __tablename__ = 'job_descriptions'
