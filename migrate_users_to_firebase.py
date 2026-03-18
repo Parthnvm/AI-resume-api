@@ -7,7 +7,7 @@ Prerequisites:
   2. Download your Firebase Service Account JSON:
        Firebase Console → Project Settings → Service Accounts → Generate new private key
   3. Save it as  firebase-service-account.json  in this project root
-  4. Make sure FIREBASE_API_KEY is set in .env (for the REST helper)
+     (The Admin SDK authenticates via this file — no FIREBASE_API_KEY needed here.)
 
 Run:
   python migrate_users_to_firebase.py
