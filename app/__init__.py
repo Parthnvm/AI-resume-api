@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 
 # Initialize extensions
@@ -23,6 +24,7 @@ def create_app():
     app.config['FIREBASE_API_KEY'] = os.environ.get('FIREBASE_API_KEY', '')
 
     # Init extensions
+    CORS(app, supports_credentials=True)
     db.init_app(app)
     login_manager.init_app(app)
     bcrypt.init_app(app)
