@@ -11,9 +11,15 @@ services:
         sync: false
       - key: FIREBASE_API_KEY
         sync: false
+      - key: FLASK_ENV
+        value: production
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: DATABASE_URL
+        value: sqlite:////data/resume_shortlister.db
+      - key: UPLOAD_FOLDER
+        value: /data/resumes
     disk:
-      name: resume-uploads
-      mountPath: /opt/render/project/src/resumes
+      name: app-data
+      mountPath: /data
       sizeGB: 1
