@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-resume-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    disk:
+      name: resume-uploads
+      mountPath: /opt/render/project/src/resumes
+      sizeGB: 1

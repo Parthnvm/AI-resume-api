@@ -3,6 +3,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
+from flask_cors import CORS
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -11,13 +12,26 @@ bcrypt = Bcrypt()
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-super-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///resume_shortlister.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///resume_shortlister.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['UPLOAD_FOLDER'] = os.path.abspath('resumes')
+
+    # Upload folder — uses Render's persistent disk path in production if set
+    upload_folder = os.environ.get(
+        'UPLOAD_FOLDER',
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'resumes')
+    )
+    os.makedirs(upload_folder, exist_ok=True)
+    app.config['UPLOAD_FOLDER'] = upload_folder
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
+
+    # Security: enforce secure cookies in production (HTTPS)
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
     # Firebase Auth — set FIREBASE_API_KEY in .env
     app.config['FIREBASE_API_KEY'] = os.environ.get('FIREBASE_API_KEY', '')
