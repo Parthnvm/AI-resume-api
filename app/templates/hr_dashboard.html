@@ -15,21 +15,21 @@
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fa-solid fa-search text-slate-400"></i>
                     </div>
-                    <input type="text" x-model="searchQuery" placeholder="Search candidates..." 
+                    <input type="text" id="candidate-search" name="q" x-model="searchQuery" placeholder="Search candidates..." 
                            class="pl-10 pr-4 py-2 text-sm border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:bg-slate-800 dark:text-slate-200 w-64">
                 </div>
                 <div class="inline-flex rounded-lg shadow-sm">
-                    <button class="relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-l-lg border focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
+                    <button type="button" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-l-lg border focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
                             :class="filterStatus === '' ? 'bg-brand-50 text-brand-700 border-brand-200' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
                             @click="setFilter('')">
                         All
                     </button>
-                    <button class="relative inline-flex items-center px-4 py-2 text-sm font-semibold border-t border-b border-r focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
+                    <button type="button" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold border-t border-b border-r focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
                             :class="filterStatus === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
                             @click="setFilter('pending')">
                         <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span> New
                     </button>
-                    <button class="relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-r-lg border-t border-b border-r focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
+                    <button type="button" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold rounded-r-lg border-t border-b border-r focus:z-10 focus:ring-2 focus:ring-brand-500 transition-colors"
                             :class="filterStatus === 'shortlisted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'"
                             @click="setFilter('shortlisted')">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> Shortlisted
@@ -96,13 +96,13 @@
         <div class="flex items-center space-x-2" x-show="selectedCandidates.length > 0" style="display: none;">
             <span class="text-sm text-slate-500 font-medium mr-2"><span x-text="selectedCandidates.length"></span> selected</span>
             
-            <button @click="performBulkAction('shortlisted')" class="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
+            <button type="button" @click="performBulkAction('shortlisted')" class="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
                 <i class="fa-solid fa-check mr-1"></i> Shortlist
             </button>
-            <button @click="performBulkAction('rejected')" class="text-xs font-semibold bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">
+            <button type="button" @click="performBulkAction('rejected')" class="text-xs font-semibold bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">
                 <i class="fa-solid fa-xmark mr-1"></i> Reject
             </button>
-            <button @click="performBulkAction('delete')" class="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-200 hover:text-red-700 transition-colors tooltip" title="Permanently delete resumes">
+            <button type="button" @click="performBulkAction('delete')" class="text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-200 hover:text-red-700 transition-colors tooltip" title="Permanently delete resumes">
                 <i class="fa-regular fa-trash-can"></i>
             </button>
         </div>
@@ -113,15 +113,15 @@
             <a href="{{ url_for('hr_bp.export_csv') }}" class="inline-flex items-center text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors shadow-sm">
                 <i class="fa-solid fa-download mr-2 text-slate-400"></i> Export Shortlisted (CSV)
             </a>
-                <button @click="openBulkConfirm()" :disabled="bulkAnalyzing"
-                        class="inline-flex items-center text-sm font-semibold text-white bg-brand-600 border border-brand-600 rounded-lg px-4 py-2 hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
-                    <template x-if="!bulkAnalyzing">
-                        <span><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Bulk Analyze All</span>
-                    </template>
-                    <template x-if="bulkAnalyzing">
-                        <span><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Analyzing...</span>
-                    </template>
-                </button>
+            <button type="button" @click="openBulkConfirm()" :disabled="bulkAnalyzing"
+                    class="inline-flex items-center text-sm font-semibold text-white bg-brand-600 border border-brand-600 rounded-lg px-4 py-2 hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                <template x-if="!bulkAnalyzing">
+                    <span><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Bulk Analyze All</span>
+                </template>
+                <template x-if="bulkAnalyzing">
+                    <span><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Analyzing...</span>
+                </template>
+            </button>
         </div>
     </div>
 
@@ -157,7 +157,7 @@
                 <thead class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                     <tr>
                         <th scope="col" class="px-6 py-4 text-left">
-                            <input type="checkbox" @change="toggleAll($event)" class="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 dark:bg-slate-800 h-4 w-4">
+                            <input type="checkbox" id="select-all-candidates" @change="toggleAll($event)" class="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 dark:bg-slate-800 h-4 w-4">
                         </th>
                         <th scope="col" class="px-4 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Candidate Profile</th>
                         <th scope="col" class="px-4 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Experience</th>
@@ -179,7 +179,7 @@
                     <template x-for="c in candidates" :key="c.id">
                         <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors duration-150 group" :class="selectedCandidates.includes(c.id.toString()) ? 'bg-brand-50/30 dark:bg-brand-900/10' : ''" x-show="!loading">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <input type="checkbox" :value="c.id" x-model="selectedCandidates" class="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 dark:bg-slate-800 h-4 w-4">
+                                <input type="checkbox" :id="'candidate-chk-' + c.id" :value="c.id" x-model="selectedCandidates" class="rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500 dark:bg-slate-800 h-4 w-4">
                             </td>
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
@@ -225,7 +225,7 @@
                                         </div>
                                         <div class="flex items-center space-x-1">
                                             <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">AI Score</span>
-                                            <button @click.stop="openReasoning(c)"
+                                            <button type="button" @click.stop="openReasoning(c)"
                                                     class="flex items-center justify-center w-4 h-4 text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 transition-colors"
                                                     title="View analysis details">
                                                 <i class="fa-solid fa-circle-info text-sm"></i>
@@ -261,7 +261,7 @@
                                 <div class="flex justify-end space-x-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     
                                     <template x-if="!c.has_analysis">
-                                        <button @click="openAnalyze(c.id)" class="text-brand-600 hover:text-white hover:bg-brand-600 bg-brand-50 dark:bg-brand-900/20 dark:text-brand-400 px-3 py-1.5 rounded-lg transition-colors border border-brand-200 dark:border-brand-800/50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold inline-flex items-center">
+                                        <button type="button" @click="openAnalyze(c.id)" class="text-brand-600 hover:text-white hover:bg-brand-600 bg-brand-50 dark:bg-brand-900/20 dark:text-brand-400 px-3 py-1.5 rounded-lg transition-colors border border-brand-200 dark:border-brand-800/50 focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs font-semibold inline-flex items-center">
                                             <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> Analyze
                                         </button>
                                     </template>
@@ -269,24 +269,24 @@
                                     <template x-if="c.has_analysis">
                                         <div class="flex items-center">
                                             <!-- Re-analyze -->
-                                            <button @click="openAnalyze(c.id)" class="text-slate-500 hover:text-brand-600 bg-slate-100 dark:bg-slate-800 dark:hover:bg-brand-900/40 hover:bg-brand-50 w-8 h-8 rounded-lg transition-colors flex items-center justify-center tooltip" title="Re-analyze with new Job Description">
+                                            <button type="button" @click="openAnalyze(c.id)" class="text-slate-500 hover:text-brand-600 bg-slate-100 dark:bg-slate-800 dark:hover:bg-brand-900/40 hover:bg-brand-50 w-8 h-8 rounded-lg transition-colors flex items-center justify-center tooltip" title="Re-analyze with new Job Description">
                                                 <i class="fa-solid fa-rotate-right"></i>
                                             </button>
                                             
                                             <!-- Approve/Reject actions -->
                                             <div class="flex border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden ml-1">
-                                                <button @click="setStatus(c.id, 'shortlisted')" class="hover:bg-emerald-50 dark:hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 w-8 h-8 flex items-center justify-center transition-colors tooltip" title="Shortlist Candidate">
+                                                <button type="button" @click="setStatus(c.id, 'shortlisted')" class="hover:bg-emerald-50 dark:hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 w-8 h-8 flex items-center justify-center transition-colors tooltip" title="Shortlist Candidate">
                                                     <i class="fa-solid fa-check"></i>
                                                 </button>
                                                 <div class="w-px bg-slate-200 dark:bg-slate-700"></div>
-                                                <button @click="setStatus(c.id, 'rejected')" class="hover:bg-red-50 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-500 dark:hover:text-red-400 w-8 h-8 flex items-center justify-center transition-colors tooltip" title="Reject Candidate">
+                                                <button type="button" @click="setStatus(c.id, 'rejected')" class="hover:bg-red-50 dark:hover:bg-red-900/40 text-slate-400 hover:text-red-500 dark:hover:text-red-400 w-8 h-8 flex items-center justify-center transition-colors tooltip" title="Reject Candidate">
                                                     <i class="fa-solid fa-xmark"></i>
                                                 </button>
                                             </div>
                                         </div>
                                     </template>
                                     
-                                    <button @click="openDelete(c.id)" class="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 w-8 h-8 rounded-lg transition-colors flex items-center justify-center ml-2" title="Delete Profile">
+                                    <button type="button" @click="openDelete(c.id)" class="text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 w-8 h-8 rounded-lg transition-colors flex items-center justify-center ml-2" title="Delete Profile">
                                         <i class="fa-regular fa-trash-can"></i>
                                     </button>
                                 </div>
@@ -301,7 +301,7 @@
                             </div>
                             <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-1">No candidates found</h3>
                             <p class="text-sm">There are no candidates matching the current view criteria.</p>
-                            <button x-show="filterStatus || filterJob || searchQuery" @click="clearFilters()" class="mt-4 text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 text-sm font-semibold">Clear Filters</button>
+                            <button type="button" x-show="filterStatus || filterJob || searchQuery" @click="clearFilters()" class="mt-4 text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 text-sm font-semibold">Clear Filters</button>
                         </td>
                     </tr>
                 </tbody>
@@ -318,7 +318,7 @@
                 </div>
                 <div>
                     <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <button @click="fetchCandidates(currentPage - 1)" :disabled="!hasPrev" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button type="button" @click="fetchCandidates(currentPage - 1)" :disabled="!hasPrev" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="fa-solid fa-chevron-left"></i>
                         </button>
                         
@@ -326,7 +326,7 @@
                             Page <span x-text="currentPage" class="mx-1 font-bold"></span> of <span x-text="totalPages" class="ml-1"></span>
                         </span>
                         
-                        <button @click="fetchCandidates(currentPage + 1)" :disabled="!hasNext" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button type="button" @click="fetchCandidates(currentPage + 1)" :disabled="!hasNext" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="fa-solid fa-chevron-right"></i>
                         </button>
                     </nav>
@@ -470,7 +470,7 @@
         </div>
     </div>
 
-    <!-- â”€â”€ AI Reasoning Detail Modal â”€â”€ -->
+    <!-- ─── AI Reasoning Detail Modal ─── -->
     <div x-show="showReasoningModal" class="relative z-50" style="display:none;">
         <div x-show="showReasoningModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showReasoningModal = false"></div>
         <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
@@ -478,7 +478,7 @@
                  x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                  x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  @click.away="showReasoningModal = false"
-                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg">
+                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
                 <!-- Header -->
                 <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
                     <div class="flex items-center space-x-3">
@@ -490,7 +490,7 @@
                             <p class="text-xs text-slate-500 dark:text-slate-400">AI Analysis Details</p>
                         </div>
                     </div>
-                    <button @click="showReasoningModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 transition-colors">
+                    <button type="button" @click="showReasoningModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-slate-600 transition-colors">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
@@ -506,48 +506,93 @@
                         <span class="text-xs text-slate-500 dark:text-slate-400" x-text="activeReasoning.job_title"></span>
                     </div>
                 </div>
-                <!-- Reasoning body -->
-                <div class="px-6 py-5">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">AI Reasoning</p>
+                <!-- Reasoning body (scrollable) -->
+                <div class="px-6 py-5 overflow-y-auto flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">AI Reasoning</p>
                     <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line" x-text="activeReasoning.reasoning || 'No reasoning available.'"></p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- â”€â”€ Bulk Analyze Confirmation Modal â”€â”€ -->
+    <!-- ── Bulk Analyze Modal (with JD input) ── -->
     <div x-show="showBulkModal" class="relative z-50" style="display:none;">
         <div x-show="showBulkModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4 overflow-y-auto">
             <div x-show="showBulkModal"
                  x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                  x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  @click.away="showBulkModal = false"
-                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 max-w-md w-full">
-                <div class="flex items-start mb-4">
-                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center mr-4">
-                        <i class="fa-solid fa-wand-magic-sparkles text-brand-600 dark:text-brand-400"></i>
+                 class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl my-4">
+
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center">
+                            <i class="fa-solid fa-wand-magic-sparkles text-brand-600 dark:text-brand-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Bulk Analyze All Resumes</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Runs AI analysis on every unprocessed resume using the job description below.</p>
+                        </div>
                     </div>
+                    <button type="button" @click="showBulkModal = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-5 space-y-4">
+
+                    <!-- Quick-fill from saved job -->
                     <div>
-                        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Bulk Analyze All Resumes</h3>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">This will run AI analysis on every resume that hasn't been processed yet. Depending on the number of resumes, this may take a while.</p>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                            <i class="fa-solid fa-briefcase mr-1"></i> Quick-fill from a saved job role
+                        </label>
+                        <select class="block w-full rounded-xl border-slate-300 dark:border-slate-600 shadow-sm text-sm py-2 pl-3 pr-8 dark:bg-slate-700 dark:text-slate-200 focus:border-brand-500 focus:ring-brand-500"
+                                @change="if($event.target.value && window._jobDescriptions[$event.target.value]) { bulkJdText = window._jobDescriptions[$event.target.value]; } $event.target.value = ''">
+                            <option value="">&mdash; Select a job to auto-fill description &mdash;</option>
+                            {% for job in jobs %}
+                            <option value="{{ job.id }}">{{ job.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- JD Textarea -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                            <i class="fa-solid fa-file-lines mr-1"></i> Job Description <span class="text-red-400">*</span>
+                        </label>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mb-2">The AI will score every resume against this description. Be specific about required skills, experience, and responsibilities.</p>
+                        <textarea x-model="bulkJdText" rows="9"
+                            class="block w-full rounded-xl border-slate-300 dark:border-slate-600 shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm py-2.5 px-3 dark:bg-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none transition-shadow"
+                            placeholder="Paste the full job description here — required skills, responsibilities, experience requirements..."></textarea>
+                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 text-right" x-text="bulkJdText.length + ' characters'"></p>
+                    </div>
+
+                    <!-- Info note -->
+                    <div class="flex items-start space-x-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 flex-shrink-0"></i>
+                        <p class="text-xs text-amber-700 dark:text-amber-300">Resumes that already have an analysis will <strong>not</strong> be re-analyzed. Only pending resumes will be processed.</p>
                     </div>
                 </div>
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button @click="showBulkModal = false"
-                        class="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
-                        Cancel
+
+                <!-- Footer -->
+                <div class="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 rounded-b-2xl flex flex-row-reverse items-center space-x-3 space-x-reverse border-t border-slate-100 dark:border-slate-700">
+                    <button type="button" @click="if(!bulkJdText.trim()){ alert('Please enter a job description before running bulk analysis.'); return; } showBulkModal = false; bulkAnalyze()"
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Analyze All Resumes
                     </button>
-                    <button @click="showBulkModal = false; bulkAnalyze()"
-                        class="px-4 py-2 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors shadow-sm">
-                        <i class="fa-solid fa-play mr-1.5"></i> Yes, Analyze All
+                    <button type="button" @click="showBulkModal = false"
+                        class="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
+                        Cancel
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- â”€â”€ Toast Notification â”€â”€ -->
+    <!-- ─── Toast Notification ─── -->
     <div class="fixed top-20 right-4 z-[200] w-full max-w-sm pointer-events-none"
          x-show="showToast"
          x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
@@ -558,13 +603,24 @@
             <i class="text-lg mr-3 mt-0.5 flex-shrink-0"
                :class="toastType === 'success' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-circle-exclamation text-red-500'"></i>
             <p class="text-sm font-medium flex-1" x-text="toastMessage"></p>
-            <button @click="showToast = false" class="ml-3 opacity-60 hover:opacity-100 pointer-events-auto transition-opacity">
+            <button type="button" @click="showToast = false" class="ml-3 opacity-60 hover:opacity-100 pointer-events-auto transition-opacity">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
     </div>
 
 </div>
+
+<!-- Job descriptions map for quick-fill (avoids Jinja2 attribute escaping issues) -->
+<script>
+    /* eslint-disable */
+    window._jobDescriptions = {
+        {% for job in jobs %}
+        "{{ job.id }}": {{ job.description | tojson }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    /* eslint-enable */
+</script>
 
 <!-- AlpineJS Dashboard Controller -->
 <script>
@@ -599,6 +655,7 @@
             selectedCandidates: [],
             bulkAnalyzing: false,
             showBulkModal: false,
+            bulkJdText: '',
             showReasoningModal: false,
             activeReasoning: {},
             showToast: false,
@@ -715,6 +772,7 @@
             },
 
             openBulkConfirm() {
+                this.bulkJdText = '';
                 this.showBulkModal = true;
             },
 
@@ -729,7 +787,11 @@
             async bulkAnalyze() {
                 this.bulkAnalyzing = true;
                 try {
-                    const res = await fetch('/hr/api/bulk_analyze', { method: 'POST' });
+                    const res = await fetch('/hr/api/bulk_analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ job_description: this.bulkJdText.trim() })
+                    });
                     const data = await res.json();
                     if (res.ok) {
                         this.showNotification(data.message + (data.errors > 0 ? ` (${data.errors} failed)` : ''), 'success');
@@ -752,8 +814,16 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ status: newStatus })
                     });
-                    if(res.ok) window.location.reload();
-                } catch(e) {}
+                    if (res.ok) {
+                        this.showNotification(`Candidate ${newStatus}.`, 'success');
+                        this.fetchCandidates(this.currentPage);
+                        this.fetchStats();
+                    } else {
+                        this.showNotification('Failed to update status.', 'error');
+                    }
+                } catch(e) {
+                    this.showNotification('Could not reach server.', 'error');
+                }
             },
 
             openDelete(id) {
@@ -763,12 +833,44 @@
 
             async confirmDelete() {
                 try {
-                    const res = await fetch(`/hr/delete/${this.activeUploadId}`, { method:'POST' });
-                    if(res.ok) window.location.reload();
-                } catch(e) {}
+                    const res = await fetch(`/hr/delete/${this.activeUploadId}`, { method: 'POST' });
+                    if (res.ok) {
+                        this.showDeleteModal = false;
+                        this.showNotification('Candidate deleted.', 'success');
+                        this.fetchCandidates(this.currentPage);
+                        this.fetchStats();
+                    } else {
+                        this.showNotification('Delete failed.', 'error');
+                    }
+                } catch(e) {
+                    this.showNotification('Could not reach server.', 'error');
+                }
+            },
+
+            async performBulkAction(action) {
+                if (this.selectedCandidates.length === 0) return;
+                try {
+                    const res = await fetch('/hr/bulk_action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: this.selectedCandidates, action: action })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.selectedCandidates = [];
+                        this.showNotification(data.message || `Bulk action "${action}" applied.`, 'success');
+                        this.fetchCandidates(this.currentPage);
+                        this.fetchStats();
+                    } else {
+                        this.showNotification(data.error || 'Bulk action failed.', 'error');
+                    }
+                } catch(e) {
+                    this.showNotification('Could not reach server.', 'error');
+                }
             }
         }));
     });
 </script>
 
 {% endblock %}
+

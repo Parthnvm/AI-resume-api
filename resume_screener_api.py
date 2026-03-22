@@ -1,5 +1,6 @@
 import re
 import logging
+import unicodedata
 from typing import List, Set, Tuple, Optional
 from io import BytesIO
 
@@ -22,10 +23,34 @@ logger = logging.getLogger("ResumeScreener")
 
 
 SKILL_DB = {
-    "languages": {"python", "java", "javascript", "c++", "c#", "ruby", "go", "rust", "php", "swift", "kotlin", "typescript", "sql", "r", "scala", "perl", "bash", "shell"},
-    "frameworks": {"django", "flask", "fastapi", "react", "angular", "vue", "spring", "dotnet", "laravel", "express", "pytorch", "tensorflow", "keras", "nextjs", "nuxt", "svelte", "hadoop", "spark"},
-    "tools": {"docker", "kubernetes", "aws", "azure", "gcp", "git", "jenkins", "jira", "redis", "mongodb", "postgresql", "mysql", "elasticsearch", "kafka", "terraform", "ansible", "nginx", "linux"},
-    "concepts": {"machine learning", "nlp", "rest api", "graphql", "ci/cd", "agile", "scrum", "devops", "microservices", "ui/ux", "frontend", "backend", "deep learning", "data science", "cloud computing", "system design"}
+    "languages": {
+        "python", "java", "javascript", "c++", "c#", "ruby", "go", "rust", "php",
+        "swift", "kotlin", "typescript", "sql", "r", "scala", "perl", "bash", "shell",
+        "lua", "matlab", "julia", "groovy", "fortran", "haskell", "elixir", "dart",
+    },
+    "frameworks": {
+        "django", "flask", "fastapi", "react", "angular", "vue", "spring", "dotnet",
+        "laravel", "express", "pytorch", "tensorflow", "keras", "nextjs", "nuxt",
+        "svelte", "hadoop", "spark", "jax", "huggingface", "transformers",
+        "langchain", "llamaindex", "scikit-learn", "sklearn", "xgboost", "lightgbm",
+        "catboost", "triton", "onnx", "mlflow", "wandb", "ray", "dask", "polars",
+        "airflow", "prefect", "celery", "fasttext", "gensim", "spacy",
+    },
+    "tools": {
+        "docker", "kubernetes", "aws", "azure", "gcp", "git", "jenkins", "jira",
+        "redis", "mongodb", "postgresql", "mysql", "elasticsearch", "kafka",
+        "terraform", "ansible", "nginx", "linux", "cuda", "tensorrt", "databricks",
+        "snowflake", "bigquery", "dbt", "airflow", "kubeflow", "sagemaker",
+        "vertex ai", "github actions", "gitlab ci", "prometheus", "grafana",
+    },
+    "concepts": {
+        "machine learning", "nlp", "rest api", "graphql", "ci/cd", "agile", "scrum",
+        "devops", "microservices", "ui/ux", "frontend", "backend", "deep learning",
+        "data science", "cloud computing", "system design", "reinforcement learning",
+        "computer vision", "generative ai", "large language models", "llm", "rag",
+        "fine-tuning", "prompt engineering", "distributed systems", "data engineering",
+        "feature engineering", "model deployment", "mlops", "etl",
+    },
 }
 
 
@@ -79,25 +104,57 @@ class DocumentParser:
 
 
 class TextProcessor:
-    @staticmethod
-    def clean(text: str) -> str:
+    # Unicode chars → ASCII equivalents before stripping
+    _UNICODE_REPLACEMENTS = [
+        # Box-drawing / rule dividers → space (common in resume templates)
+        (re.compile(r'[\u2500-\u257F\u2580-\u259F]+'), ' '),
+        # Unicode bullets → hyphen so word boundaries are preserved
+        (re.compile(r'[\u2022\u2023\u25E6\u2043\u2219\u29BF\u25CF\u25CB]'), '-'),
+        # Em/en dash → hyphen
+        (re.compile(r'[\u2013\u2014\u2012]'), '-'),
+        # Smart quotes → straight quotes
+        (re.compile(r'[\u2018\u2019]'), "'"),
+        (re.compile(r'[\u201C\u201D]'), '"'),
+        # Other common Unicode punctuation → space
+        (re.compile(r'[\u00B7\u2027]'), ' '),
+    ]
+
+    @classmethod
+    def clean(cls, text: str) -> str:
+        """Unicode-aware text cleaning that preserves skill tokens."""
+        # Step 1: NFKC normalization (resolves ligatures, width chars, etc.)
+        text = unicodedata.normalize('NFKC', text)
+        # Step 2: Convert known Unicode to meaningful ASCII
+        for pattern, replacement in cls._UNICODE_REPLACEMENTS:
+            text = pattern.sub(replacement, text)
         text = text.lower()
-        text = re.sub(r'[^a-z0-9\s\+\#\/\.\-]', ' ', text)
+        # Step 3: Strip characters that can't be part of skill tokens
+        # Keep: letters, digits, whitespace, +, #, /, ., -, _ (for scikit-learn etc.)
+        text = re.sub(r'[^a-z0-9\s\+\#\/\.\-\_]', ' ', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text
 
     @staticmethod
     def extract_explicit_skills(text: str) -> Set[str]:
+        """Substring-based skill matching for ALL skills (not just 'concepts').
+        Uses word-boundary checks for short tokens to avoid false positives."""
         found = set()
         clean_txt = TextProcessor.clean(text)
-        words = set(clean_txt.split())
-
+        # Boundary-aware pattern cache: short tokens (≤3 chars) need word boundaries
         for category in SKILL_DB.values():
-            found.update(words.intersection(category))
-
-        for concept in SKILL_DB["concepts"]:
-            if concept in clean_txt:
-                found.add(concept)
+            for skill in category:
+                clean_skill = TextProcessor.clean(skill)
+                if not clean_skill:
+                    continue
+                if len(clean_skill) <= 3 or ' ' not in clean_skill:
+                    # Use word boundary to avoid matching 'go' inside 'google'
+                    pattern = r'(?<![a-z0-9])' + re.escape(clean_skill) + r'(?![a-z0-9])'
+                    if re.search(pattern, clean_txt):
+                        found.add(skill)
+                else:
+                    # Multi-word: simple substring (clean_txt is already lowercased)
+                    if clean_skill in clean_txt:
+                        found.add(skill)
         return found
 
 
@@ -146,10 +203,69 @@ class MatchingEngine:
                     pass
         return 0  # Not specified
 
+    # Section headers to search for when building evidence snippets
+    _SECTION_HEADERS = re.compile(
+        r'^\s*(skills|experience|work experience|employment|projects|education|'
+        r'technical skills|core competencies|summary|profile)\s*$',
+        re.IGNORECASE,
+    )
+
     def _extract_resume_snippets(self) -> List[str]:
-        """Extract 2-3 meaningful lines from the resume as evidence."""
-        lines = [l.strip() for l in self.resume_raw.splitlines() if len(l.strip()) > 40]
-        return lines[:3]
+        """Extract meaningful evidence lines from the resume.
+
+        Strategy:
+        1. Collect the first substantive line (contact/summary).
+        2. Find section headers (SKILLS, EXPERIENCE …) and grab the 3 content
+           lines immediately following each header.
+        3. De-duplicate while preserving order; return up to 6 lines total.
+        """
+        raw_lines = self.resume_raw.splitlines()
+        seen: Set[str] = set()
+        result: List[str] = []
+
+        def _add(line: str) -> None:
+            stripped = line.strip()
+            # Skip divider-only lines (e.g. ────────)
+            if not stripped or stripped == re.sub(r'[^a-zA-Z0-9]', '', stripped) == '':
+                return
+            # Skip lines that are purely non-alphanumeric (dividers)
+            if not re.search(r'[a-zA-Z0-9]', stripped):
+                return
+            key = stripped[:80]
+            if key not in seen:
+                seen.add(key)
+                result.append(stripped)
+
+        # Grab first substantial line (>30 chars, likely header/summary)
+        for line in raw_lines:
+            if len(line.strip()) > 30:
+                _add(line)
+                break
+
+        # Scan for section headers and grab content beneath them
+        i = 0
+        while i < len(raw_lines) and len(result) < 6:
+            if self._SECTION_HEADERS.match(raw_lines[i]):
+                # Skip divider lines immediately after the header
+                j = i + 1
+                added = 0
+                while j < len(raw_lines) and added < 3:
+                    candidate = raw_lines[j].strip()
+                    if candidate and re.search(r'[a-zA-Z0-9]', candidate):
+                        _add(candidate)
+                        added += 1
+                    j += 1
+            i += 1
+
+        # Fall back: any line >40 chars not yet included
+        if not result:
+            for line in raw_lines:
+                if len(line.strip()) > 40:
+                    _add(line)
+                if len(result) >= 4:
+                    break
+
+        return result[:6]
 
     def generate_reasoning(
         self,

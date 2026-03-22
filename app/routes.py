@@ -557,6 +557,10 @@ def export_csv():
 def bulk_analyze():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
 
+    # Read optional custom JD from request body
+    req_data = request.get_json(force=True, silent=True) or {}
+    custom_jd = req_data.get('job_description', '').strip()
+
     # Find all uploads that do not yet have an analysis record
     analyzed_ids = db.session.query(CandidateAnalysis.upload_id)
     pending_uploads = ResumeUpload.query.filter(
@@ -576,16 +580,17 @@ def bulk_analyze():
                 errors += 1
                 continue
 
-            # Use the job's description if the resume was submitted for a specific role
-            jd = ''
-            try:
-                if upload.job_id:
-                    from app.models import JobDescription
-                    job = JobDescription.query.get(upload.job_id)
-                    if job:
-                        jd = job.description or ''
-            except Exception:
-                jd = ''
+            # Priority: custom JD from this request → job's stored description → global file
+            jd = custom_jd
+            if not jd:
+                try:
+                    if upload.job_id:
+                        from app.models import JobDescription
+                        job = JobDescription.query.get(upload.job_id)
+                        if job:
+                            jd = job.description or ''
+                except Exception:
+                    jd = ''
 
             result = analyze_single_resume(text, upload.original_filename, jd)
 

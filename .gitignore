@@ -50,3 +50,5 @@ results/*
 .agent/
 agents/
 analytic-frontend/
+create_test_resumes.py
+test_output.txt

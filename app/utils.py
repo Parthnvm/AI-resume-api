@@ -12,11 +12,23 @@ except ImportError:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
     from resume_screener_api import MatchingEngine
 
-# Import Gemini AI engine (optional — degrades gracefully if key missing)
+# Import AI engine providers
 try:
-    from app.ai_engine import analyze_with_gemini
+    from app.ai_engine import (
+        analyze_with_gemini,
+        analyze_with_groq,
+        batch_analyze_with_gemini,
+        batch_analyze_with_groq,
+        RATE_LIMITED,
+    )
 except ImportError:
-    from ai_engine import analyze_with_gemini
+    from ai_engine import (
+        analyze_with_gemini,
+        analyze_with_groq,
+        batch_analyze_with_gemini,
+        batch_analyze_with_groq,
+        RATE_LIMITED,
+    )
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
@@ -79,9 +91,10 @@ def analyze_single_resume(resume_text: str, filename: str = "", custom_jd: str =
     """
     Analyze a single resume against a job description.
 
-    Priority:
-      1. Gemini AI engine  (if GEMINI_API_KEY is set)
-      2. TF-IDF + skill matching engine  (always available as fallback)
+    3-tier fallback chain:
+      1. Gemini AI (google-genai)   — best quality; if rate-limited → go to tier 2 immediately
+      2. Groq AI  (llama-3.3-70b)  — fast, generous free tier; if unavailable → go to tier 3
+      3. TF-IDF   (MatchingEngine)  — local, always available, no external dependencies
 
     Returns a dict with keys:
       match_score, skill_score, content_score, reasoning,
@@ -91,10 +104,66 @@ def analyze_single_resume(resume_text: str, filename: str = "", custom_jd: str =
     job_desc = custom_jd.strip() if custom_jd and custom_jd.strip() else \
         load_text_file("job_description.md", "Default Job Description...")
 
-    # 1 — Try Gemini
-    ai_result = analyze_with_gemini(resume_text, job_desc, filename)
-    if ai_result is not None:
-        return ai_result
+    # ── Tier 1: Gemini ──────────────────────────────────────────────────────
+    gemini_result = analyze_with_gemini(resume_text, job_desc, filename)
 
-    # 2 — Fall back to TF-IDF
+    if gemini_result is RATE_LIMITED:
+        # Rate-limited → skip straight to Groq without waiting further
+        import logging
+        logging.getLogger("Utils").warning(
+            "Gemini rate-limited — falling back to Groq immediately"
+        )
+    elif gemini_result is not None:
+        return gemini_result
+    # else: non-rate-limit failure from Gemini → also try Groq
+
+    # ── Tier 2: Groq ────────────────────────────────────────────────────────
+    groq_result = analyze_with_groq(resume_text, job_desc, filename)
+    if groq_result is not None:
+        return groq_result
+
+    # ── Tier 3: TF-IDF (always works) ───────────────────────────────────────
+    import logging
+    logging.getLogger("Utils").info("Both LLM providers unavailable — using TF-IDF engine")
     return _tfidf_analyze(resume_text, job_desc, filename)
+
+
+def batch_analyze_resumes(resumes: list, jd_text: str) -> list:
+    """
+    Analyze a list of (resume_text, filename) tuples against a job description.
+
+    Same 3-tier chain as analyze_single_resume but operates in batch mode
+    where supported:
+      1. Gemini batch  — single API call for all resumes
+      2. Groq batch    — one call per resume (sequential)
+      3. TF-IDF batch  — fully local
+
+    Returns list of normalised result dicts sorted descending by match_score.
+    """
+    import logging
+    log = logging.getLogger("Utils")
+
+    # ── Tier 1: Gemini batch ─────────────────────────────────────────────────
+    gemini_result = batch_analyze_with_gemini(resumes, jd_text)
+
+    if gemini_result is RATE_LIMITED:
+        log.warning("Gemini batch rate-limited — falling back to Groq batch")
+    elif gemini_result is not None:
+        return gemini_result
+
+    # ── Tier 2: Groq batch ───────────────────────────────────────────────────
+    groq_result = batch_analyze_with_groq(resumes, jd_text)
+    if groq_result is not None:
+        return groq_result
+
+    # ── Tier 3: TF-IDF batch (always works) ─────────────────────────────────
+    log.info("Both LLM providers unavailable for batch — using TF-IDF engine")
+    engine = MatchingEngine(jd_text=jd_text, resume_text="")
+    raw_results = engine.analyze_batch(resumes)
+    out = []
+    for r in raw_results:
+        try:
+            out.append(r.model_dump())
+        except AttributeError:
+            out.append(r.dict())
+    return out
