@@ -1,0 +1,73 @@
+# render.yaml — Render.com Infrastructure Blueprint
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy with one click by connecting your GitHub repo to Render,
+# or run: render deploy
+#
+# After first deploy, set the secret environment variables in the Render dashboard:
+#   SECRET_KEY, GEMINI_API_KEY, GROQ_API_KEY, FIREBASE_API_KEY
+
+services:
+  - type: web
+    name: ai-resume-api
+    runtime: python
+    region: oregon            # Change to: frankfurt, singapore, ohio
+
+    # Build command — installs dependencies
+    buildCommand: pip install -r requirements.txt
+
+    # Start command — production WSGI server
+    startCommand: gunicorn wsgi:app --workers 2 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT
+
+    # Health check — Render will restart the service if this fails
+    healthCheckPath: /health
+
+    # Auto-deploy on every push to the main branch
+    autoDeploy: true
+
+    # Persistent disk for uploaded resume files
+    # Free tier: 1 GB  |  Paid: up to 100 GB
+    disk:
+      name: resume-uploads
+      mountPath: /opt/render/project/src/resumes
+      sizeGB: 1
+
+    envVars:
+      # Flask application settings
+      - key: FLASK_ENV
+        value: production
+
+      - key: UPLOAD_DIR
+        value: /opt/render/project/src/resumes
+
+      - key: LOG_LEVEL
+        value: INFO
+
+      - key: PORT
+        value: "10000"          # Render sets $PORT automatically; this is a fallback
+
+      # ── Secrets — set these in the Render dashboard, NOT here ────────────
+      # - key: SECRET_KEY
+      #   value: <generate with: python -c "import secrets; print(secrets.token_hex(32))">
+      #
+      # - key: GEMINI_API_KEY
+      #   value: <your Gemini API key>
+      #
+      # - key: GROQ_API_KEY
+      #   value: <your Groq API key>
+      #
+      # - key: FIREBASE_API_KEY
+      #   value: <your Firebase Web API key>
+      #
+      # Optional: PostgreSQL database (Render Postgres add-on fills this automatically)
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: ai-resume-db
+      #     property: connectionString
+
+# Optional: add a managed Postgres database (uncomment to use)
+# databases:
+#   - name: ai-resume-db
+#     databaseName: ai_resume
+#     user: ai_resume_user
+#     plan: free

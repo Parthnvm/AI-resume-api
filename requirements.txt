@@ -12,3 +12,10 @@ groq>=0.5.0
 scikit-learn>=1.3.0
 python-docx>=1.1.0
 requests>=2.31.0
+
+# ---------- Production WSGI server ----------
+gunicorn==21.2.0
+
+# ---------- Optional PostgreSQL support -----
+# Uncomment if DATABASE_URL points to a Postgres instance
+# psycopg2-binary==2.9.9

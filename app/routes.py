@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 from werkzeug.utils import secure_filename
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, send_from_directory
@@ -13,6 +13,15 @@ from app.firebase_auth import firebase_register, firebase_login, firebase_send_p
 auth_bp = Blueprint('auth_bp', __name__)
 student_bp = Blueprint('student_bp', __name__)
 hr_bp = Blueprint('hr_bp', __name__)
+
+# --- HEALTH CHECK ---
+@auth_bp.route('/health')
+def health():
+    """Liveness probe for Render, Docker, and load-balancers. No auth required."""
+    return jsonify({
+        "status": "ok",
+        "version": current_app.config.get("APP_VERSION", "1.0.0"),
+    }), 200
 
 # --- AUTHENTICATION ROUTES ---
 @auth_bp.route('/', methods=['GET'])
