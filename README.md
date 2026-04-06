@@ -32,20 +32,20 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Flask App                               │
 │                                                                 │
-│  auth_bp (/, /auth, /logout, /forgot-password, /health)        │
+│  auth_bp (/, /auth, /logout, /forgot-password, /health)         │
 │  student_bp (/student/dashboard, /student/upload, ...)          │
 │  hr_bp (/hr/dashboard, /hr/api/*, /hr/analyze/*, ...)           │
 │                                                                 │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐   │
-│  │  ai_engine   │   │    utils     │   │  firebase_auth   │   │
-│  │  (Gemini/    │   │  (extract,   │   │  (REST API)      │   │
-│  │   Groq/TFIDF)│   │   analyze)   │   │                  │   │
-│  └──────────────┘   └──────────────┘   └──────────────────┘   │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐     │
+│  │  ai_engine   │   │    utils     │   │  firebase_auth   │     │
+│  │  (Gemini/    │   │  (extract,   │   │  (REST API)      │     │
+│  │   Groq/TFIDF)│   │   analyze)   │   │                  │     │
+│  └──────────────┘   └──────────────┘   └──────────────────┘     │
 │                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              SQLAlchemy ORM (SQLite / PostgreSQL)        │  │
-│  │  User · JobDescription · ResumeUpload · CandidateAnalysis│  │
-│  └──────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │              SQLAlchemy ORM (SQLite / PostgreSQL)        │   │
+│  │  User · JobDescription · ResumeUpload · CandidateAnalysis│   │
+│  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
