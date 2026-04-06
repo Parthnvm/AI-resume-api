@@ -54,6 +54,5 @@ desktop.ini
 agents/
 analytic-frontend/
 
-# ── Test artefacts ────────────────────────────────────────────────────────────
-create_test_resumes.py
-test_output.txt
+# ── Ignored files & test artefacts ──────────────────────────────────────────────
+not used/
