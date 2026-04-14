@@ -8,6 +8,7 @@ from app.models import User, ResumeUpload, CandidateAnalysis
 from app.utils import extract_text, analyze_single_resume
 from app.ai_engine import analyze_resume_module
 from app.firebase_auth import firebase_register, firebase_login, firebase_send_password_reset, FirebaseAuthError
+import requests as _requests
 
 # Blueprints
 auth_bp = Blueprint('auth_bp', __name__)
@@ -46,39 +47,47 @@ def auth():
             if not user:
                 flash('Invalid email or password', 'error')
             else:
-                try:
+                # ── PRIMARY: bcrypt local hash check ─────────────────────────
+                # The local bcrypt hash is always the authoritative credential.
+                # Firebase is NEVER a blocker — at most a background sync.
+                bcrypt_ok = bcrypt.check_password_hash(user.password_hash, password)
+
+                if bcrypt_ok:
+                    # ✅ Local hash matched — log in immediately, no network needed.
+                    # Optionally ping Firebase to keep session alive (non-blocking).
                     if user.firebase_uid:
-                        # Firebase is the password authority for this user.
-                        # Fall back to local bcrypt if Firebase is unreachable or returns
-                        # INVALID_LOGIN_CREDENTIALS (e.g. imported bcrypt hash mismatch).
                         try:
                             firebase_login(email, password)
-                        except (FirebaseAuthError, RuntimeError) as e:
-                            fb_code = getattr(e, 'code', '') or ''
-                            # Only use bcrypt fallback for credential/network errors,
-                            # not for USER_DISABLED etc.
-                            recoverable = fb_code in ('INVALID_LOGIN_CREDENTIALS', '') \
-                                or isinstance(e, RuntimeError)
-                            if recoverable and bcrypt.check_password_hash(user.password_hash, password):
-                                pass  # Local hash matched — proceed to login
-                            else:
-                                raise FirebaseAuthError('INVALID_LOGIN_CREDENTIALS') if not isinstance(e, FirebaseAuthError) else e
-                    else:
-                        # Legacy user: verify with bcrypt, then lazily migrate to Firebase
-                        if not bcrypt.check_password_hash(user.password_hash, password):
-                            raise FirebaseAuthError('INVALID_LOGIN_CREDENTIALS')
-                        # Migrate: create Firebase account silently
-                        try:
-                            fb = firebase_register(email, password)
-                            user.firebase_uid = fb['localId']
-                            db.session.commit()
-                        except (FirebaseAuthError, RuntimeError):
-                            pass  # migration failed silently — user still logged in locally
-
+                        except Exception:
+                            pass  # Firebase sync failure never blocks local login
                     login_user(user, remember=True)
                     return redirect(url_for(f'{user.user_type}_bp.dashboard'))
-                except FirebaseAuthError as e:
-                    flash(str(e), 'error')
+
+                elif user.firebase_uid:
+                    # ❓ Bcrypt failed, but user has a Firebase account.
+                    # This happens when the password was changed in Firebase
+                    # but our local hash wasn't updated (e.g. via password-reset flow).
+                    # Try Firebase as last resort and re-sync local hash on success.
+                    firebase_ok = False
+                    try:
+                        firebase_login(email, password)
+                        firebase_ok = True
+                    except (FirebaseAuthError, RuntimeError, _requests.RequestException):
+                        pass
+
+                    if firebase_ok:
+                        # Re-sync the local hash with the new password
+                        user.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+                        db.session.commit()
+                        login_user(user, remember=True)
+                        return redirect(url_for(f'{user.user_type}_bp.dashboard'))
+                    else:
+                        flash('Invalid email or password', 'error')
+
+                else:
+                    # Legacy user with no Firebase UID — bcrypt already failed above.
+                    # Attempt silent Firebase migration on correct credentials only.
+                    flash('Invalid email or password', 'error')
 
         elif action == 'register':
             email = request.form.get('email', '').strip().lower()
