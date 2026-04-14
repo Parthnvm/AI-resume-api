@@ -48,16 +48,21 @@ def auth():
             else:
                 try:
                     if user.firebase_uid:
-                        # Firebase is the password authority for this user
+                        # Firebase is the password authority for this user.
+                        # Fall back to local bcrypt if Firebase is unreachable or returns
+                        # INVALID_LOGIN_CREDENTIALS (e.g. imported bcrypt hash mismatch).
                         try:
                             firebase_login(email, password)
-                        except FirebaseAuthError as e:
-                            # Graceful degradation: Firebase sometimes fails to verify imported bcrypt hashes.
-                            # Fall back to checking our local hash which is mathematically proven.
-                            if e.code == 'INVALID_LOGIN_CREDENTIALS' and bcrypt.check_password_hash(user.password_hash, password):
-                                pass  # Hash matched perfectly, proceed to login
+                        except (FirebaseAuthError, RuntimeError) as e:
+                            fb_code = getattr(e, 'code', '') or ''
+                            # Only use bcrypt fallback for credential/network errors,
+                            # not for USER_DISABLED etc.
+                            recoverable = fb_code in ('INVALID_LOGIN_CREDENTIALS', '') \
+                                or isinstance(e, RuntimeError)
+                            if recoverable and bcrypt.check_password_hash(user.password_hash, password):
+                                pass  # Local hash matched — proceed to login
                             else:
-                                raise e
+                                raise FirebaseAuthError('INVALID_LOGIN_CREDENTIALS') if not isinstance(e, FirebaseAuthError) else e
                     else:
                         # Legacy user: verify with bcrypt, then lazily migrate to Firebase
                         if not bcrypt.check_password_hash(user.password_hash, password):
@@ -67,10 +72,10 @@ def auth():
                             fb = firebase_register(email, password)
                             user.firebase_uid = fb['localId']
                             db.session.commit()
-                        except FirebaseAuthError:
+                        except (FirebaseAuthError, RuntimeError):
                             pass  # migration failed silently — user still logged in locally
 
-                    login_user(user)
+                    login_user(user, remember=True)
                     return redirect(url_for(f'{user.user_type}_bp.dashboard'))
                 except FirebaseAuthError as e:
                     flash(str(e), 'error')
@@ -91,15 +96,30 @@ def auth():
                         password_hash=hashed,
                         user_type=user_type,
                         firebase_uid=fb['localId'],
-                        first_name=request.form.get('first_name'),
-                        last_name=request.form.get('last_name')
+                        first_name=request.form.get('first_name', '').strip(),
+                        last_name=request.form.get('last_name', '').strip()
                     )
                     new_user.generate_api_key()
                     db.session.add(new_user)
                     db.session.commit()
-                    login_user(new_user)
+                    login_user(new_user, remember=True)
                     return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
-                except FirebaseAuthError as e:
+                except (FirebaseAuthError, RuntimeError) as e:
+                    if isinstance(e, RuntimeError):
+                        # Firebase not configured — register locally only
+                        hashed = bcrypt.generate_password_hash(password).decode('utf-8')
+                        new_user = User(
+                            email=email,
+                            password_hash=hashed,
+                            user_type=user_type,
+                            first_name=request.form.get('first_name', '').strip(),
+                            last_name=request.form.get('last_name', '').strip()
+                        )
+                        new_user.generate_api_key()
+                        db.session.add(new_user)
+                        db.session.commit()
+                        login_user(new_user, remember=True)
+                        return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
                     flash(str(e), 'error')
 
     return render_template('auth.html')
@@ -186,7 +206,7 @@ def upload():
 def insights(upload_id):
     if current_user.user_type != 'student': return jsonify({"error": "Unauthorized"}), 403
     
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     if upload.user_id != current_user.id:
         return jsonify({"error": "Unauthorized"}), 403
         
@@ -389,7 +409,7 @@ def batch_upload():
 def analyze(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
     
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     text = extract_text(upload.file_path)
     
     req_data = request.get_json(force=True, silent=True) or {}
@@ -436,8 +456,8 @@ def analyze(upload_id):
 @login_required
 def update_status(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    upload = ResumeUpload.query.get_or_404(upload_id)
-    status = request.json.get('status')
+    upload = db.get_or_404(ResumeUpload, upload_id)
+    status = request.json.get('status') if request.json else None
     if status in ['shortlisted', 'rejected', 'pending']:
         upload.status = status
         db.session.commit()
@@ -447,7 +467,7 @@ def update_status(upload_id):
 @hr_bp.route('/view_resume/<upload_id>')
 @login_required
 def view_resume(upload_id):
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     
     if current_user.user_type == 'student' and upload.user_id != current_user.id:
         return "Unauthorized", 403
@@ -463,7 +483,7 @@ def view_resume(upload_id):
 @login_required
 def delete_resume(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     
     try:
         analysis = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
