@@ -60,14 +60,14 @@ services:
       #   value: <your Firebase Web API key>
       #
       # Optional: PostgreSQL database (Render Postgres add-on fills this automatically)
-      # - key: DATABASE_URL
-      #   fromDatabase:
-      #     name: ai-resume-db
-      #     property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-resume-db
+          property: connectionString
 
-# Optional: add a managed Postgres database (uncomment to use)
-# databases:
-#   - name: ai-resume-db
-#     databaseName: ai_resume
-#     user: ai_resume_user
-#     plan: free
+# Managed Postgres database (free tier — data persists across deploys)
+databases:
+  - name: ai-resume-db
+    databaseName: ai_resume
+    user: ai_resume_user
+    plan: free

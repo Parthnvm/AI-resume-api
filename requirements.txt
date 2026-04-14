@@ -17,5 +17,5 @@ requests>=2.31.0
 gunicorn==21.2.0
 
 # ---------- Optional PostgreSQL support -----
-# Uncomment if DATABASE_URL points to a Postgres instance
-# psycopg2-binary==2.9.9
+# Required when DATABASE_URL points to a Postgres instance (e.g. Render managed Postgres)
+psycopg2-binary==2.9.9
