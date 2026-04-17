@@ -52,16 +52,4 @@ agents/
 analytic-frontend/
 create_test_resumes.py
 test_output.txt
-not used/__init__.py
-not used/guidance_prompt.md
-not used/Implementation Plan
-not used/job_description.md
-not used/migrate_db.py
-not used/migrate_firebase.py
-not used/migrate_keys.py
-not used/migrate_reset_token.py
-not used/migrate_users_to_firebase.py
-not used/test_fallback_chain.py
-not used/test_resume_parser.py
-not used/Walkthrough
-.gitignore
+not used/
