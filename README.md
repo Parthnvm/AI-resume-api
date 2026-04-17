@@ -249,7 +249,7 @@ AI-resume-api/
 ├── api/
 │   └── index.py             # Vercel serverless entry point
 ├── app/
-│   ├── __init__.py          # Flask app factory (Vercel-aware directory setup)
+│   ├── __init__.py          # Flask app factory (Vercel-aware /tmp paths)
 │   ├── routes.py            # Auth / Student / HR blueprints
 │   ├── models.py            # SQLAlchemy models
 │   ├── ai_engine.py         # Gemini + Groq + TF-IDF AI providers
@@ -260,17 +260,11 @@ AI-resume-api/
 │   └── templates/           # Jinja2 HTML templates
 ├── config.py                # Dev / Prod config (IS_VERCEL detection, /tmp paths)
 ├── vercel.json              # Vercel deployment config
-├── wsgi.py                  # Gunicorn WSGI entrypoint (Render / Docker)
-├── run.py                   # Local dev server
 ├── requirements.txt
-├── render.yaml              # Render.com blueprint
-├── Dockerfile               # Production Docker image
-├── Procfile                 # Render/Heroku start command
-├── .dockerignore
 ├── .python-version          # Python 3.12
 ├── .env.example             # Environment variable template
 ├── .gitignore
-└── not used/                # Archived scripts (migrations, tests, etc.)
+└── not used/                # Archived: Dockerfile, render.yaml, wsgi.py, run.py, etc.
 ```
 
 ---
