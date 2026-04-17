@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
+"""
+run.py — Local development entry point.
+
+Do NOT use this in production. Use gunicorn via wsgi.py instead:
+  gunicorn wsgi:app --workers 2 --threads 2 --timeout 120
+
+Usage:
+  FLASK_ENV=development python run.py
+"""
+
 import os
 from dotenv import load_dotenv
 
-# Load .env before initialising the app so GEMINI_API_KEY etc. are available
+# Load .env before initialising the app so all keys are available
 load_dotenv()
 
-from app import create_app
+from app import create_app  # noqa: E402
 
-
-# Create the Flask application instance
 app = create_app()
 
-if __name__ == '__main__':
-    # Ensure required directories exist for file uploads and results
-    os.makedirs('resumes', exist_ok=True)
-    os.makedirs('results', exist_ok=True)
-    
-    print("Starting Unified Resume Shortlister System...")
-    print("Access the portal at: http://localhost:5000")
-    
-    # Run a single unified server on port 5000
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV", "development").lower() == "development"
+
+    print(f"[Dev Server] Starting on http://localhost:{port}  (debug={debug})")
+    print("[Dev Server] For production use: gunicorn wsgi:app")
+
+    app.run(host="0.0.0.0", port=port, debug=debug)

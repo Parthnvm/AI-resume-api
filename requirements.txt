@@ -2,7 +2,7 @@ Flask==3.0.2
 Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Flask-Bcrypt==1.0.1
-firebase-admin>=6.0.0
+# firebase-admin removed: the app uses Firebase REST API directly (see app/firebase_auth.py)
 pypdf==4.0.1
 python-dotenv==1.0.1
 pydantic==2.6.3
@@ -12,3 +12,10 @@ groq>=0.5.0
 scikit-learn>=1.3.0
 python-docx>=1.1.0
 requests>=2.31.0
+
+# ---------- Production WSGI server ----------
+gunicorn==21.2.0
+
+# ---------- Optional PostgreSQL support -----
+# Required when DATABASE_URL points to a Postgres instance (e.g. Render managed Postgres)
+psycopg2-binary==2.9.9
