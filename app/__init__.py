@@ -44,14 +44,19 @@ def create_app():
     upload_folder = Path(app.config["UPLOAD_FOLDER"])
     upload_folder.mkdir(parents=True, exist_ok=True)
 
-    results_folder = Path(__file__).resolve().parent.parent / "results"
+    # On Vercel /var/task is read-only — redirect results to /tmp
+    from config import IS_VERCEL as _IS_VERCEL
+    if _IS_VERCEL:
+        results_folder = Path("/tmp/results")
+    else:
+        results_folder = Path(__file__).resolve().parent.parent / "results"
     results_folder.mkdir(parents=True, exist_ok=True)
 
     # Ensure SQLite instance directory exists (no-op for PostgreSQL)
     db_uri = app.config["SQLALCHEMY_DATABASE_URI"]
     if db_uri.startswith("sqlite:///"):
         # Strip the sqlite:/// prefix to get the file path.
-        # config.py uses .as_posix() so the path always has forward slashes.
+        # config.py uses forward slashes on all operating systems.
         raw_path = db_uri[len("sqlite:///"):]
         Path(raw_path).parent.mkdir(parents=True, exist_ok=True)
 
