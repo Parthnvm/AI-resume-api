@@ -11,6 +11,7 @@ from app import db
 from app.models import User, ResumeUpload, JobDescription, CandidateAnalysis
 from app.utils import extract_text, analyze_single_resume
 from io import BytesIO
+from config import IS_VERCEL
 
 
 def trigger_webhook(webhook_url, payload):
@@ -153,9 +154,23 @@ def process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url
 
 
 def start_batch_processing(app_instance, zip_path, hr_user_id, job_id, webhook_url=None):
-    thread = threading.Thread(
-        target=process_batch_upload,
-        args=(app_instance, zip_path, hr_user_id, job_id, webhook_url)
-    )
-    thread.daemon = True
-    thread.start()
+    """
+    Start batch resume processing.
+
+    * On Vercel: runs synchronously in the current request context because
+      daemon threads are terminated the moment the HTTP response is flushed.
+      The caller must handle the blocking behaviour (longer response time).
+
+    * On all other platforms (Render, Docker, local): spawns a daemon thread
+      so the endpoint returns 202 Accepted immediately.
+    """
+    if IS_VERCEL:
+        # Synchronous execution — Vercel kills background threads immediately.
+        process_batch_upload(app_instance, zip_path, hr_user_id, job_id, webhook_url)
+    else:
+        thread = threading.Thread(
+            target=process_batch_upload,
+            args=(app_instance, zip_path, hr_user_id, job_id, webhook_url)
+        )
+        thread.daemon = True
+        thread.start()

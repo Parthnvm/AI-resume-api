@@ -27,8 +27,11 @@ def _firebase_post(endpoint: str, payload: dict) -> dict:
     resp = requests.post(url, json=payload, timeout=10)
     data = resp.json()
     if not resp.ok:
-        error_msg = data.get('error', {}).get('message', 'UNKNOWN_ERROR')
-        raise FirebaseAuthError(error_msg)
+        # Firebase sometimes appends detail after ' : ' e.g. 'INVALID_LOGIN_CREDENTIALS : reason'
+        raw_msg = data.get('error', {}).get('message', 'UNKNOWN_ERROR')
+        # Normalise to just the base error code (everything before the first ' :')
+        error_code = raw_msg.split(' :')[0].strip()
+        raise FirebaseAuthError(error_code)
     return data
 
 
@@ -46,8 +49,9 @@ class FirebaseAuthError(Exception):
     }
 
     def __init__(self, code: str):
-        self.code = code
-        super().__init__(self.MESSAGES.get(code, 'Authentication error. Please try again.'))
+        # Normalise code in case a raw message string was passed directly
+        self.code = code.split(' :')[0].strip()
+        super().__init__(self.MESSAGES.get(self.code, 'Authentication error. Please try again.'))
 
 
 def firebase_register(email: str, password: str) -> dict:

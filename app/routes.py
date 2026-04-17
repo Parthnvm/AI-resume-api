@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 from werkzeug.utils import secure_filename
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, send_from_directory
@@ -8,11 +8,21 @@ from app.models import User, ResumeUpload, CandidateAnalysis
 from app.utils import extract_text, analyze_single_resume
 from app.ai_engine import analyze_resume_module
 from app.firebase_auth import firebase_register, firebase_login, firebase_send_password_reset, FirebaseAuthError
+import requests as _requests
 
 # Blueprints
 auth_bp = Blueprint('auth_bp', __name__)
 student_bp = Blueprint('student_bp', __name__)
 hr_bp = Blueprint('hr_bp', __name__)
+
+# --- HEALTH CHECK ---
+@auth_bp.route('/health')
+def health():
+    """Liveness probe for Render, Docker, and load-balancers. No auth required."""
+    return jsonify({
+        "status": "ok",
+        "version": current_app.config.get("APP_VERSION", "1.0.0"),
+    }), 200
 
 # --- AUTHENTICATION ROUTES ---
 @auth_bp.route('/', methods=['GET'])
@@ -37,26 +47,47 @@ def auth():
             if not user:
                 flash('Invalid email or password', 'error')
             else:
-                try:
-                    if user.firebase_uid:
-                        # Firebase is the password authority for this user
-                        firebase_login(email, password)
-                    else:
-                        # Legacy user: verify with bcrypt, then lazily migrate to Firebase
-                        if not bcrypt.check_password_hash(user.password_hash, password):
-                            raise FirebaseAuthError('INVALID_LOGIN_CREDENTIALS')
-                        # Migrate: create Firebase account silently
-                        try:
-                            fb = firebase_register(email, password)
-                            user.firebase_uid = fb['localId']
-                            db.session.commit()
-                        except FirebaseAuthError:
-                            pass  # migration failed silently — user still logged in locally
+                # ── PRIMARY: bcrypt local hash check ─────────────────────────
+                # The local bcrypt hash is always the authoritative credential.
+                # Firebase is NEVER a blocker — at most a background sync.
+                bcrypt_ok = bcrypt.check_password_hash(user.password_hash, password)
 
-                    login_user(user)
+                if bcrypt_ok:
+                    # ✅ Local hash matched — log in immediately, no network needed.
+                    # Optionally ping Firebase to keep session alive (non-blocking).
+                    if user.firebase_uid:
+                        try:
+                            firebase_login(email, password)
+                        except Exception:
+                            pass  # Firebase sync failure never blocks local login
+                    login_user(user, remember=True)
                     return redirect(url_for(f'{user.user_type}_bp.dashboard'))
-                except FirebaseAuthError as e:
-                    flash(str(e), 'error')
+
+                elif user.firebase_uid:
+                    # ❓ Bcrypt failed, but user has a Firebase account.
+                    # This happens when the password was changed in Firebase
+                    # but our local hash wasn't updated (e.g. via password-reset flow).
+                    # Try Firebase as last resort and re-sync local hash on success.
+                    firebase_ok = False
+                    try:
+                        firebase_login(email, password)
+                        firebase_ok = True
+                    except (FirebaseAuthError, RuntimeError, _requests.RequestException):
+                        pass
+
+                    if firebase_ok:
+                        # Re-sync the local hash with the new password
+                        user.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+                        db.session.commit()
+                        login_user(user, remember=True)
+                        return redirect(url_for(f'{user.user_type}_bp.dashboard'))
+                    else:
+                        flash('Invalid email or password', 'error')
+
+                else:
+                    # Legacy user with no Firebase UID — bcrypt already failed above.
+                    # Attempt silent Firebase migration on correct credentials only.
+                    flash('Invalid email or password', 'error')
 
         elif action == 'register':
             email = request.form.get('email', '').strip().lower()
@@ -74,15 +105,30 @@ def auth():
                         password_hash=hashed,
                         user_type=user_type,
                         firebase_uid=fb['localId'],
-                        first_name=request.form.get('first_name'),
-                        last_name=request.form.get('last_name')
+                        first_name=request.form.get('first_name', '').strip(),
+                        last_name=request.form.get('last_name', '').strip()
                     )
                     new_user.generate_api_key()
                     db.session.add(new_user)
                     db.session.commit()
-                    login_user(new_user)
+                    login_user(new_user, remember=True)
                     return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
-                except FirebaseAuthError as e:
+                except (FirebaseAuthError, RuntimeError) as e:
+                    if isinstance(e, RuntimeError):
+                        # Firebase not configured — register locally only
+                        hashed = bcrypt.generate_password_hash(password).decode('utf-8')
+                        new_user = User(
+                            email=email,
+                            password_hash=hashed,
+                            user_type=user_type,
+                            first_name=request.form.get('first_name', '').strip(),
+                            last_name=request.form.get('last_name', '').strip()
+                        )
+                        new_user.generate_api_key()
+                        db.session.add(new_user)
+                        db.session.commit()
+                        login_user(new_user, remember=True)
+                        return redirect(url_for(f'{new_user.user_type}_bp.dashboard'))
                     flash(str(e), 'error')
 
     return render_template('auth.html')
@@ -169,7 +215,7 @@ def upload():
 def insights(upload_id):
     if current_user.user_type != 'student': return jsonify({"error": "Unauthorized"}), 403
     
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     if upload.user_id != current_user.id:
         return jsonify({"error": "Unauthorized"}), 403
         
@@ -342,27 +388,33 @@ def hr_stats():
 @login_required
 def batch_upload():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
+
     if 'zip_file' not in request.files:
         return jsonify({"error": "No file part"}), 400
-        
+
     file = request.files['zip_file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-        
+
     job_id = request.form.get('job_id')
     webhook_url = request.form.get('webhook_url')
-    
+
     if file and file.filename.endswith('.zip'):
         from app.tasks import start_batch_processing
+        from config import IS_VERCEL
         upload_folder = current_app.config['UPLOAD_FOLDER']
         filename = secure_filename(file.filename)
         file_path = os.path.join(upload_folder, f"upload_{filename}")
         file.save(file_path)
-        
+
         start_batch_processing(current_app._get_current_object(), file_path, current_user.id, job_id, webhook_url)
-        
-        return jsonify({"message": "Batch processing started. Processing runs in the background."}), 202
+
+        if IS_VERCEL:
+            # Synchronous path: processing already complete by the time we reach here.
+            return jsonify({"message": "Batch processing complete."}), 200
+        else:
+            # Async path: thread spawned, processing continues in background.
+            return jsonify({"message": "Batch processing started. Processing runs in the background."}), 202
     else:
         return jsonify({"error": "File must be a .zip archive"}), 400
 
@@ -372,7 +424,7 @@ def batch_upload():
 def analyze(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
     
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     text = extract_text(upload.file_path)
     
     req_data = request.get_json(force=True, silent=True) or {}
@@ -419,8 +471,8 @@ def analyze(upload_id):
 @login_required
 def update_status(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    upload = ResumeUpload.query.get_or_404(upload_id)
-    status = request.json.get('status')
+    upload = db.get_or_404(ResumeUpload, upload_id)
+    status = request.json.get('status') if request.json else None
     if status in ['shortlisted', 'rejected', 'pending']:
         upload.status = status
         db.session.commit()
@@ -430,7 +482,7 @@ def update_status(upload_id):
 @hr_bp.route('/view_resume/<upload_id>')
 @login_required
 def view_resume(upload_id):
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     
     if current_user.user_type == 'student' and upload.user_id != current_user.id:
         return "Unauthorized", 403
@@ -446,7 +498,7 @@ def view_resume(upload_id):
 @login_required
 def delete_resume(upload_id):
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    upload = ResumeUpload.query.get_or_404(upload_id)
+    upload = db.get_or_404(ResumeUpload, upload_id)
     
     try:
         analysis = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()

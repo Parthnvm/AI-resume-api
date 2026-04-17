@@ -1,16 +1,12 @@
 import re
 import logging
 import unicodedata
+from dataclasses import dataclass, field
 from typing import List, Set, Tuple, Optional
 from io import BytesIO
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
-
 from pypdf import PdfReader
 from docx import Document
 
@@ -54,7 +50,9 @@ SKILL_DB = {
 }
 
 
-class AnalysisResult(BaseModel):
+
+@dataclass
+class AnalysisResult:
     match_score: float
     skill_score: float
     content_score: float
@@ -79,7 +77,7 @@ class DocumentParser:
             return text
         except Exception as e:
             logger.error(f"PDF parsing error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid or corrupt PDF file")
+            raise ValueError("Invalid or corrupt PDF file")
 
     @staticmethod
     def extract_text_from_docx(file_content: bytes) -> str:
@@ -88,19 +86,19 @@ class DocumentParser:
             return "\n".join([para.text for para in doc.paragraphs])
         except Exception as e:
             logger.error(f"DOCX parsing error: {e}")
-            raise HTTPException(status_code=400, detail="Invalid or corrupt DOCX file")
+            raise ValueError("Invalid or corrupt DOCX file")
 
     @classmethod
-    def parse_file(cls, file: UploadFile) -> str:
-        content = file.file.read()
-        if file.filename.endswith(".pdf"):
+    def parse_bytes(cls, content: bytes, filename: str) -> str:
+        """Parse raw bytes given a filename for extension detection."""
+        if filename.endswith(".pdf"):
             return cls.extract_text_from_pdf(content)
-        elif file.filename.endswith(".docx"):
+        elif filename.endswith(".docx"):
             return cls.extract_text_from_docx(content)
-        elif file.filename.endswith(".txt"):
-            return content.decode("utf-8")
+        elif filename.endswith(".txt"):
+            return content.decode("utf-8", errors="replace")
         else:
-            raise HTTPException(status_code=400, detail="Unsupported file format. Use PDF, DOCX, or TXT.")
+            raise ValueError("Unsupported file format. Use PDF, DOCX, or TXT.")
 
 
 class TextProcessor:
@@ -417,23 +415,33 @@ class MatchingEngine:
         return results
 
 
-app = FastAPI(title="Enterprise Resume Screener API", version="2.2.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.post("/screen/file", response_model=AnalysisResult)
-async def screen_resume_file(job_description: str = Form(...), file: UploadFile = File(...)):
-    logger.info(f"Analyzing file: {file.filename}")
-    resume_text = DocumentParser.parse_file(file)
-    engine = MatchingEngine(job_description, resume_text)
-    return engine.analyze(filename=file.filename)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # ── Standalone FastAPI server (development/testing only) ─────────────────
+    # This block is NOT executed when the module is imported by the Flask app.
+    try:
+        from fastapi import FastAPI, UploadFile, File, Form
+        from fastapi.middleware.cors import CORSMiddleware
+        import uvicorn
+
+        _api = FastAPI(title="Enterprise Resume Screener API", version="2.2.0")
+        _api.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        @_api.post("/screen/file")
+        async def screen_resume_file(job_description: str = Form(...), file: UploadFile = File(...)):
+            logger.info(f"Analyzing file: {file.filename}")
+            content = await file.read()
+            resume_text = DocumentParser.parse_bytes(content, file.filename)
+            engine = MatchingEngine(job_description, resume_text)
+            import dataclasses
+            return dataclasses.asdict(engine.analyze(filename=file.filename))
+
+        uvicorn.run(_api, host="0.0.0.0", port=8000)
+    except ImportError:
+        print("FastAPI/uvicorn not installed. Run: pip install fastapi uvicorn")
