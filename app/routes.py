@@ -427,11 +427,19 @@ def analyze(upload_id):
     upload = db.get_or_404(ResumeUpload, upload_id)
     text = extract_text(upload.file_path)
     
+    # On Vercel, /tmp is ephemeral — the PDF may be gone after a cold start.
+    # Fall back to the cached reasoning text from a prior analysis so re-analysis still works.
+    if not text:
+        existing = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
+        if existing and existing.reasoning_summary:
+            text = existing.reasoning_summary  # use cached extracted reasoning as proxy text
+    
     req_data = request.get_json(force=True, silent=True) or {}
     custom_jd = req_data.get('job_description', '').strip()
     
     if not text:
-        return jsonify({"error": "Failed to extract text from PDF."}), 400
+        return jsonify({"error": "Resume file not found. Please re-upload the resume before analyzing."}), 400
+
         
     try:
         result = analyze_single_resume(text, upload.original_filename, custom_jd)

@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 
 <div x-data="hrDashboard()" x-init="initDashboard()">
@@ -754,9 +754,18 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ job_description: this.jdText })
                     });
-                    if(res.ok) window.location.reload();
-                    else alert('Analysis formulation error.');
-                } catch(e) {} finally {
+                    if(res.ok) {
+                        this.showAnalyzeModal = false;
+                        this.showNotification('Analysis complete!', 'success');
+                        this.fetchCandidates(this.currentPage);
+                        this.fetchStats();
+                    } else {
+                        const data = await res.json().catch(() => ({}));
+                        alert(data.error || 'Analysis failed. Please try again.');
+                    }
+                } catch(e) {
+                    alert('Could not reach server. Please check your connection.');
+                } finally {
                     this.analyzing = false;
                 }
             },
