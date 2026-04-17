@@ -18,7 +18,7 @@
 | **HR Dashboard** | Paginated candidate board with search, sort, filter, bulk actions |
 | **Student Portal** | Students upload their own resume and view personalized AI feedback |
 | **Job Board** | HR posts roles; students apply to specific jobs |
-| **Batch Upload** | Drop a ZIP of PDFs — processed automatically in a background thread |
+| **Batch Upload** | Drop a ZIP of PDFs — processed in background (Render/Docker) or synchronously (Vercel) |
 | **Firebase Auth** | Industry-standard email/password authentication with password reset |
 | **API Key Access** | Every HR account gets a Bearer token for programmatic API access |
 | **CSV Export** | One-click export of shortlisted candidates |
@@ -121,7 +121,59 @@ FLASK_ENV=development python run.py
 
 ---
 
-## 🐳 Docker
+## ▲ Deploying to Vercel
+
+### Prerequisites
+
+1. **External PostgreSQL database** — Vercel has no built-in database. Use one of:
+   - [Neon](https://neon.tech) (free tier, serverless Postgres — recommended)
+   - [Supabase](https://supabase.com) (free tier, Postgres)
+   - Any Postgres provider that gives you a connection string
+
+2. **Vercel CLI** (optional for local testing):
+   ```bash
+   npm i -g vercel
+   vercel login
+   ```
+
+### Deploy steps
+
+1. **Push to GitHub** and connect your repo at [vercel.com/new](https://vercel.com/new)
+2. Vercel auto-detects `vercel.json` and uses `api/index.py` as the entry point
+3. In **Project Settings → Environment Variables**, add:
+
+| Variable | Description |
+|----------|-------------|
+| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `DATABASE_URL` | Postgres connection string from Neon/Supabase |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) |
+| `FIREBASE_API_KEY` | Firebase Console → Project Settings → Web API Key |
+| `FLASK_ENV` | `production` |
+
+4. Click **Deploy** — the app will be live at `https://<your-project>.vercel.app`
+
+### Vercel-specific behaviour
+
+> [!IMPORTANT]
+> **File uploads** are stored in `/tmp/resumes` which is ephemeral. Files persist for the lifetime of a single warm function instance but are lost on cold starts. For production persistence, pipe uploads to an object store (Cloudflare R2, AWS S3) and serve signed URLs.
+
+> [!NOTE]
+> **Batch ZIP upload** runs synchronously on Vercel instead of in a background thread. Large ZIPs may approach the 60-second function timeout on the free plan.
+
+> [!NOTE]
+> **SQLite is not supported on Vercel.** `DATABASE_URL` pointing to an external Postgres instance is required. The app will refuse to start in production without it.
+
+### Local testing with Vercel CLI
+
+```bash
+vercel dev
+# → app served at http://localhost:3000 using the serverless runtime
+```
+
+---
+
+
 
 ```bash
 # Build
@@ -206,21 +258,24 @@ All endpoints require a `Authorization: Bearer <api_key>` header (except `/healt
 
 ```
 AI-resume-api/
+├── api/
+│   └── index.py             # Vercel serverless entry point
 ├── app/
 │   ├── __init__.py          # Flask app factory
 │   ├── routes.py            # Auth / Student / HR blueprints
 │   ├── models.py            # SQLAlchemy models
 │   ├── ai_engine.py         # Gemini + Groq AI providers
 │   ├── utils.py             # Text extraction, analysis orchestration
-│   ├── tasks.py             # Background batch processing
+│   ├── tasks.py             # Batch processing (async on Render, sync on Vercel)
 │   ├── firebase_auth.py     # Firebase REST auth helpers
 │   ├── logging_config.py    # Structured logging
 │   └── templates/           # Jinja2 HTML templates
 ├── config.py                # Dev / Prod / Test config classes
-├── wsgi.py                  # Production WSGI entrypoint (gunicorn)
+├── wsgi.py                  # Gunicorn WSGI entrypoint (Render / Docker)
 ├── run.py                   # Local dev server
 ├── resume_screener_api.py   # TF-IDF local engine
 ├── requirements.txt
+├── vercel.json              # Vercel deployment config
 ├── Procfile                 # Heroku/Render start command
 ├── render.yaml              # Render.com blueprint
 ├── Dockerfile               # Multi-stage production Docker image

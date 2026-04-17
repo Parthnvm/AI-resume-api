@@ -15,6 +15,10 @@ from pathlib import Path
 # Root directory of the project
 ROOT_DIR = Path(__file__).resolve().parent
 
+# True when running inside a Vercel serverless function.
+# Vercel automatically injects VERCEL=1 into every function's environment.
+IS_VERCEL: bool = os.environ.get("VERCEL", "") == "1"
+
 
 class BaseConfig:
     """Shared configuration for all environments."""
@@ -43,10 +47,14 @@ class BaseConfig:
     # ── File uploads ─────────────────────────────────────────────────────────
     # UPLOAD_DIR env var lets cloud platforms point to a persistent disk
     # (e.g. Render mounts a disk at /opt/render/project/src/resumes).
-    UPLOAD_FOLDER: str = os.environ.get(
-        "UPLOAD_DIR",
-        (ROOT_DIR / "resumes").as_posix(),
-    )
+    #
+    # On Vercel the project root is read-only; only /tmp is writable.
+    # Files stored in /tmp are ephemeral (lost on cold-start / between
+    # different function invocations), which is acceptable for single-request
+    # resume processing. For persistent storage, integrate an object store
+    # (Cloudflare R2, AWS S3, etc.) and replace this with a signed-URL flow.
+    _default_upload = "/tmp/resumes" if IS_VERCEL else (ROOT_DIR / "resumes").as_posix()
+    UPLOAD_FOLDER: str = os.environ.get("UPLOAD_DIR", _default_upload)
 
     # ── Session / Cookie security ────────────────────────────────────────────
     SESSION_COOKIE_HTTPONLY: bool = True

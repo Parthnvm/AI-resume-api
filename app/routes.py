@@ -388,27 +388,33 @@ def hr_stats():
 @login_required
 def batch_upload():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
+
     if 'zip_file' not in request.files:
         return jsonify({"error": "No file part"}), 400
-        
+
     file = request.files['zip_file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-        
+
     job_id = request.form.get('job_id')
     webhook_url = request.form.get('webhook_url')
-    
+
     if file and file.filename.endswith('.zip'):
         from app.tasks import start_batch_processing
+        from config import IS_VERCEL
         upload_folder = current_app.config['UPLOAD_FOLDER']
         filename = secure_filename(file.filename)
         file_path = os.path.join(upload_folder, f"upload_{filename}")
         file.save(file_path)
-        
+
         start_batch_processing(current_app._get_current_object(), file_path, current_user.id, job_id, webhook_url)
-        
-        return jsonify({"message": "Batch processing started. Processing runs in the background."}), 202
+
+        if IS_VERCEL:
+            # Synchronous path: processing already complete by the time we reach here.
+            return jsonify({"message": "Batch processing complete."}), 200
+        else:
+            # Async path: thread spawned, processing continues in background.
+            return jsonify({"message": "Batch processing started. Processing runs in the background."}), 202
     else:
         return jsonify({"error": "File must be a .zip archive"}), 400
 
