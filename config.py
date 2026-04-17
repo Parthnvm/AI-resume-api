@@ -36,7 +36,11 @@ class BaseConfig:
         _db_url = _db_url.replace("postgres://", "postgresql://", 1)
     # Use .as_posix() so the path uses forward slashes on all operating systems.
     # sqlite:/// + absolute path (3 slashes + full path from root).
-    _sqlite_path = (ROOT_DIR / "instance" / "resume_shortlister.db").as_posix()
+    # On Vercel /var/task is read-only — only /tmp is writable, so we put the
+    # SQLite database there. Note: /tmp data is ephemeral on Vercel; set
+    # DATABASE_URL to an external Postgres for persistent storage.
+    _sqlite_dir = "/tmp/instance" if IS_VERCEL else (ROOT_DIR / "instance").as_posix()
+    _sqlite_path = f"{_sqlite_dir}/resume_shortlister.db"
     SQLALCHEMY_DATABASE_URI: str = _db_url or f"sqlite:///{_sqlite_path}"
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
     SQLALCHEMY_ENGINE_OPTIONS: dict = {
