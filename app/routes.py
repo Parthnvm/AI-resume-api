@@ -452,7 +452,8 @@ def analyze(upload_id):
         analysis.total_score = result.get('match_score', 0)
         analysis.technical_skills_score = result.get('skill_score', 0)
         analysis.industry_relevance_score = result.get('content_score', 0)
-        analysis.experience_score = 0.0  # Computed elsewhere based on JD expectations
+        exp_years = result.get('experience_years', 0) or 0
+        analysis.experience_score = round(min(exp_years * 10, 100), 1)
         analysis.reasoning_summary = result.get('reasoning', "")
         
         # Save exact JD without fallbacks
@@ -662,7 +663,8 @@ def bulk_analyze():
             analysis.total_score = result.get('match_score', 0)
             analysis.technical_skills_score = result.get('skill_score', 0)
             analysis.industry_relevance_score = result.get('content_score', 0)
-            analysis.experience_score = 0.0
+            exp_years = result.get('experience_years', 0) or 0
+            analysis.experience_score = round(min(exp_years * 10, 100), 1)
             analysis.reasoning_summary = result.get('reasoning', '')
             analysis.job_description = jd
             analysis.key_strengths = json.dumps(result.get('found_skills', []))
