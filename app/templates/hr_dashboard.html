@@ -113,6 +113,14 @@
             <a href="{{ url_for('hr_bp.export_csv') }}" class="inline-flex items-center text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors shadow-sm">
                 <i class="fa-solid fa-download mr-2 text-slate-400"></i> Export Shortlisted (CSV)
             </a>
+            <button type="button" @click="showFilesModal = true"
+                    class="inline-flex items-center text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors shadow-sm">
+                <i class="fa-solid fa-file-arrow-up mr-2 text-slate-500"></i> Upload Files
+            </button>
+            <button type="button" @click="showZipModal = true"
+                    class="inline-flex items-center text-sm font-semibold text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-4 py-2 hover:bg-violet-100 transition-colors shadow-sm">
+                <i class="fa-solid fa-file-zipper mr-2"></i> Upload ZIP
+            </button>
             <button type="button" @click="openBulkConfirm()" :disabled="bulkAnalyzing"
                     class="inline-flex items-center text-sm font-semibold text-white bg-brand-600 border border-brand-600 rounded-lg px-4 py-2 hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
                 <template x-if="!bulkAnalyzing">
@@ -611,6 +619,209 @@
 
 </div>
 
+<!-- ── Multi-File Upload Modal ── -->
+<div x-show="showFilesModal" class="relative z-50" style="display:none;">
+    <div x-show="showFilesModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    <div class="fixed inset-0 z-10 flex items-center justify-center p-4 overflow-y-auto">
+        <div x-show="showFilesModal"
+             x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+             @click.away="!uploading && (showFilesModal = false)"
+             class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl my-4">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center">
+                        <i class="fa-solid fa-file-arrow-up text-brand-600 dark:text-brand-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Upload Resume Files</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Select one or more resumes — PDF, DOCX, DOC, TXT, RTF, ODT.</p>
+                    </div>
+                </div>
+                <button type="button" @click="showFilesModal = false" :disabled="uploading"
+                        class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="px-6 py-5 space-y-4">
+
+                <!-- Drop Zone -->
+                <div class="relative border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer"
+                     :class="uploadDragOver ? 'border-brand-400 bg-brand-50 dark:bg-brand-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-brand-300'"
+                     @dragover.prevent="uploadDragOver = true"
+                     @dragleave.prevent="uploadDragOver = false"
+                     @drop.prevent="handleFilesDrop($event)">
+                    <input type="file" accept=".pdf,.docx,.doc,.txt,.rtf,.odt" multiple
+                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" :disabled="uploading"
+                           @change="handleFilesSelect($event)">
+                    <div class="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center mx-auto mb-3">
+                        <i class="fa-solid fa-cloud-arrow-up text-xl text-brand-500"></i>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Drop files here or click to browse</p>
+                    <p class="text-xs text-slate-400 mt-1">You can select multiple files at once</p>
+                </div>
+
+                <!-- File list -->
+                <template x-if="uploadFiles.length > 0">
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                        <template x-for="(f, i) in uploadFiles" :key="i">
+                            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-700/50 rounded-xl px-3 py-2">
+                                <div class="flex items-center space-x-2 min-w-0">
+                                    <i class="fa-solid fa-file-lines text-brand-500 flex-shrink-0"></i>
+                                    <span class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate" x-text="f.name"></span>
+                                    <span class="text-xs text-slate-400 flex-shrink-0" x-text="(f.size/1024).toFixed(0) + ' KB'"></span>
+                                </div>
+                                <button type="button" @click="removeUploadFile(i)" :disabled="uploading"
+                                        class="text-slate-400 hover:text-red-500 transition-colors ml-2 flex-shrink-0 disabled:opacity-50">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Job Role -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                        <i class="fa-solid fa-briefcase mr-1"></i> Assign to Job Role <span class="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <select x-model="uploadJobId"
+                            class="block w-full rounded-xl border-slate-300 dark:border-slate-600 shadow-sm text-sm py-2 pl-3 pr-8 dark:bg-slate-700 dark:text-slate-200 focus:border-brand-500 focus:ring-brand-500">
+                        <option value="">— No specific role —</option>
+                        {% for job in jobs %}
+                        <option value="{{ job.id }}">{{ job.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Uploading indicator -->
+                <div x-show="uploading" class="flex items-center space-x-2 text-xs text-brand-600 dark:text-brand-400">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Uploading files... please wait.</span>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 rounded-b-2xl flex flex-row-reverse items-center space-x-3 space-x-reverse border-t border-slate-100 dark:border-slate-700">
+                <button type="button" @click="submitFilesUpload()" :disabled="!uploadFiles.length || uploading"
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <template x-if="!uploading">
+                        <span><i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload <span x-text="uploadFiles.length ? uploadFiles.length + ' file(s)' : ''"></span></span>
+                    </template>
+                    <template x-if="uploading">
+                        <span><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Uploading...</span>
+                    </template>
+                </button>
+                <button type="button" @click="showFilesModal = false" :disabled="uploading"
+                        class="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── ZIP Batch Upload Modal ── -->
+<div x-show="showZipModal" class="relative z-50" style="display:none;">
+    <div x-show="showZipModal" x-transition.opacity class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    <div class="fixed inset-0 z-10 flex items-center justify-center p-4 overflow-y-auto">
+        <div x-show="showZipModal"
+             x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+             @click.away="!zipUploading && (showZipModal = false)"
+             class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-xl my-4">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                        <i class="fa-solid fa-file-zipper text-violet-600 dark:text-violet-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Batch ZIP Upload</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Upload a ZIP of resumes — each file is extracted and saved automatically.</p>
+                    </div>
+                </div>
+                <button type="button" @click="showZipModal = false" :disabled="zipUploading"
+                        class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="px-6 py-5 space-y-5">
+                <div class="relative border-2 border-dashed rounded-xl p-8 text-center transition-colors"
+                     :class="zipDragOver ? 'border-violet-400 bg-violet-50 dark:bg-violet-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-violet-300'"
+                     @dragover.prevent="zipDragOver = true" @dragleave.prevent="zipDragOver = false"
+                     @drop.prevent="handleZipDrop($event)">
+                    <input type="file" accept=".zip" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" :disabled="zipUploading" @change="handleZipSelect($event)">
+                    <template x-if="!zipFile">
+                        <div>
+                            <div class="w-14 h-14 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mx-auto mb-3">
+                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-violet-500"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Drop your ZIP file here</p>
+                            <p class="text-xs text-slate-400 mt-1">or click to browse</p>
+                        </div>
+                    </template>
+                    <template x-if="zipFile">
+                        <div class="flex items-center justify-center space-x-3">
+                            <i class="fa-solid fa-file-zipper text-2xl text-violet-600"></i>
+                            <div class="text-left">
+                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-100" x-text="zipFile.name"></p>
+                                <p class="text-xs text-slate-500" x-text="(zipFile.size/1024/1024).toFixed(2) + ' MB'"></p>
+                            </div>
+                            <button type="button" @click.stop="zipFile = null" :disabled="zipUploading" class="text-slate-400 hover:text-red-500 transition-colors">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                        <i class="fa-solid fa-briefcase mr-1"></i> Assign to Job Role <span class="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <select x-model="zipJobId"
+                            class="block w-full rounded-xl border-slate-300 dark:border-slate-600 shadow-sm text-sm py-2 pl-3 pr-8 dark:bg-slate-700 dark:text-slate-200 focus:border-violet-500 focus:ring-violet-500">
+                        <option value="">— No specific role —</option>
+                        {% for job in jobs %}
+                        <option value="{{ job.id }}">{{ job.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div x-show="zipUploading" class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span>Processing resumes...</span>
+                        <span class="font-semibold text-violet-600" x-text="zipProgress + '%'"></span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-violet-500 h-2 rounded-full transition-all duration-500" :style="'width:' + zipProgress + '%'"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 rounded-b-2xl flex flex-row-reverse items-center space-x-3 space-x-reverse border-t border-slate-100 dark:border-slate-700">
+                <button type="button" @click="submitZipUpload()" :disabled="!zipFile || zipUploading"
+                        class="inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-violet-600 rounded-xl hover:bg-violet-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <template x-if="!zipUploading"><span><i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload & Process</span></template>
+                    <template x-if="zipUploading"><span><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Processing...</span></template>
+                </button>
+                <button type="button" @click="showZipModal = false" :disabled="zipUploading"
+                        class="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Job descriptions map for quick-fill (avoids Jinja2 attribute escaping issues) -->
 <script>
     /* eslint-disable */
@@ -662,6 +873,21 @@
             toastMessage: '',
             toastType: 'success',
             toastTimer: null,
+
+            // Multi-file Upload
+            showFilesModal: false,
+            uploadFiles: [],
+            uploadJobId: '',
+            uploadDragOver: false,
+            uploading: false,
+
+            // ZIP Upload
+            showZipModal: false,
+            zipFile: null,
+            zipJobId: '',
+            zipDragOver: false,
+            zipUploading: false,
+            zipProgress: 0,
 
             async initDashboard() {
                 this.fetchStats();
@@ -850,6 +1076,104 @@
             openDelete(id) {
                 this.activeUploadId = id;
                 this.showDeleteModal = true;
+            },
+
+            handleFilesSelect(event) {
+                const allowed = ['pdf','docx','doc','txt','rtf','odt'];
+                const valid = Array.from(event.target.files).filter(f => {
+                    const ext = f.name.split('.').pop().toLowerCase();
+                    return allowed.includes(ext);
+                });
+                const invalid = event.target.files.length - valid.length;
+                if (invalid > 0) this.showNotification(`${invalid} file(s) skipped (unsupported format).`, 'error');
+                this.uploadFiles = [...this.uploadFiles, ...valid];
+                event.target.value = '';
+            },
+
+            handleFilesDrop(event) {
+                this.uploadDragOver = false;
+                const allowed = ['pdf','docx','doc','txt','rtf','odt'];
+                const valid = Array.from(event.dataTransfer.files).filter(f => {
+                    const ext = f.name.split('.').pop().toLowerCase();
+                    return allowed.includes(ext);
+                });
+                this.uploadFiles = [...this.uploadFiles, ...valid];
+            },
+
+            removeUploadFile(index) {
+                this.uploadFiles = this.uploadFiles.filter((_, i) => i !== index);
+            },
+
+            async submitFilesUpload() {
+                if (!this.uploadFiles.length) return;
+                this.uploading = true;
+                let succeeded = 0, failed = 0;
+                for (const file of this.uploadFiles) {
+                    const fd = new FormData();
+                    fd.append('resume_file', file);
+                    if (this.uploadJobId) fd.append('job_id', this.uploadJobId);
+                    try {
+                        const res = await fetch('/hr/api/upload_file', { method: 'POST', body: fd });
+                        if (res.ok) succeeded++; else failed++;
+                    } catch (e) { failed++; }
+                }
+                this.uploading = false;
+                this.showFilesModal = false;
+                this.uploadFiles = [];
+                this.uploadJobId = '';
+                const msg = `${succeeded} file(s) uploaded successfully.` + (failed > 0 ? ` ${failed} failed.` : '');
+                this.showNotification(msg, failed > 0 ? 'error' : 'success');
+                this.fetchCandidates(1);
+                this.fetchStats();
+            },
+
+            handleZipSelect(event) {
+                const file = event.target.files[0];
+                if (file && file.name.endsWith('.zip')) { this.zipFile = file; }
+                else if (file) { this.showNotification('Please select a .zip file.', 'error'); event.target.value = ''; }
+            },
+
+            handleZipDrop(event) {
+                this.zipDragOver = false;
+                const file = event.dataTransfer.files[0];
+                if (file && file.name.endsWith('.zip')) { this.zipFile = file; }
+                else { this.showNotification('Please drop a .zip file.', 'error'); }
+            },
+
+            async submitZipUpload() {
+                if (!this.zipFile) return;
+                this.zipUploading = true;
+                this.zipProgress = 10;
+                const fd = new FormData();
+                fd.append('zip_file', this.zipFile);
+                if (this.zipJobId) fd.append('job_id', this.zipJobId);
+                const ticker = setInterval(() => {
+                    if (this.zipProgress < 60) this.zipProgress = Math.min(99, this.zipProgress + 8);
+                    else if (this.zipProgress < 85) this.zipProgress = Math.min(99, this.zipProgress + 3);
+                    else this.zipProgress = Math.min(99, this.zipProgress + 0.5);
+                }, 800);
+                try {
+                    const res = await fetch('/hr/api/batch_upload', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    clearInterval(ticker);
+                    this.zipProgress = 100;
+                    if (res.ok) {
+                        setTimeout(() => {
+                            this.showZipModal = false;
+                            this.zipFile = null; this.zipJobId = '';
+                            this.zipProgress = 0; this.zipUploading = false;
+                            this.showNotification(data.message || 'Batch upload complete!', 'success');
+                            this.fetchCandidates(1); this.fetchStats();
+                        }, 600);
+                    } else {
+                        this.zipProgress = 0; this.zipUploading = false;
+                        this.showNotification(data.error || 'Batch upload failed.', 'error');
+                    }
+                } catch (e) {
+                    clearInterval(ticker);
+                    this.zipProgress = 0; this.zipUploading = false;
+                    this.showNotification('Could not reach server.', 'error');
+                }
             },
 
             async confirmDelete() {
