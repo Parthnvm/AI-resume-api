@@ -654,18 +654,25 @@ def export_csv():
 def bulk_analyze():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
 
-    # Read optional custom JD from request body
+    # Read optional custom JD and batch size from request body
     req_data = request.get_json(force=True, silent=True) or {}
     custom_jd = req_data.get('job_description', '').strip()
+    # Process only a small batch per call to stay within Vercel's 60s timeout
+    batch_size = int(req_data.get('batch_size', 3))
 
     # Find all uploads that do not yet have an analysis record
     analyzed_ids = db.session.query(CandidateAnalysis.upload_id)
-    pending_uploads = ResumeUpload.query.filter(
+    all_pending = ResumeUpload.query.filter(
         ~ResumeUpload.id.in_(analyzed_ids)
     ).all()
 
-    if not pending_uploads:
-        return jsonify({"message": "All resumes are already analyzed.", "count": 0, "errors": 0})
+    total_remaining = len(all_pending)
+
+    if total_remaining == 0:
+        return jsonify({"message": "All resumes are already analyzed.", "processed": 0, "errors": 0, "remaining": 0})
+
+    # Only process up to batch_size resumes per request
+    pending_uploads = all_pending[:batch_size]
 
     processed = 0
     errors = 0
@@ -718,8 +725,10 @@ def bulk_analyze():
             db.session.rollback()
             errors += 1
 
+    remaining = total_remaining - processed - errors
     return jsonify({
-        "message": f"Bulk analysis complete. {processed} resume(s) processed.",
+        "message": f"Processed {processed} resume(s).",
         "processed": processed,
-        "errors": errors
+        "errors": errors,
+        "remaining": max(0, remaining)
     })

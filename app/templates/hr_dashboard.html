@@ -795,26 +795,38 @@
 
             async bulkAnalyze() {
                 this.bulkAnalyzing = true;
+                let totalProcessed = 0;
+                let totalErrors = 0;
                 try {
-                    const res = await fetch('/hr/api/bulk_analyze', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ job_description: this.bulkJdText.trim() })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        this.showNotification(data.message + (data.errors > 0 ? ` (${data.errors} failed)` : ''), 'success');
+                    // Loop in small batches so we never exceed Vercel's 60s timeout per call
+                    while (true) {
+                        const res = await fetch('/hr/api/bulk_analyze', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ job_description: this.bulkJdText.trim(), batch_size: 3 })
+                        });
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            this.showNotification('Bulk analysis failed: ' + (data.error || 'Unknown error'), 'error');
+                            break;
+                        }
+                        const data = await res.json();
+                        totalProcessed += data.processed || 0;
+                        totalErrors += data.errors || 0;
                         this.fetchCandidates(this.currentPage);
                         this.fetchStats();
-                    } else {
-                        this.showNotification('Bulk analysis failed: ' + (data.error || 'Unknown error'), 'error');
+                        if (!data.remaining || data.remaining <= 0) break;
                     }
+                    const msg = `Bulk analysis complete! ${totalProcessed} resume(s) analyzed.` +
+                        (totalErrors > 0 ? ` (${totalErrors} failed)` : '');
+                    this.showNotification(msg, 'success');
                 } catch(e) {
                     this.showNotification('Could not reach server.', 'error');
                 } finally {
                     this.bulkAnalyzing = false;
                 }
             },
+
 
             async setStatus(id, newStatus) {
                 try {
