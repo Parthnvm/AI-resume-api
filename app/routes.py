@@ -455,66 +455,6 @@ def batch_upload():
         return jsonify({"error": "File must be a .zip archive"}), 400
 
 
-@hr_bp.route('/api/upload_file', methods=['POST'])
-@login_required
-def upload_single_file():
-    """Accept a single resume file uploaded by HR directly (not via student portal)."""
-    if current_user.user_type != 'hr':
-        return jsonify({"error": "Unauthorized"}), 403
-
-    if 'resume_file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-
-    file = request.files['resume_file']
-    if not file or file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
-
-    allowed = {'pdf', 'docx', 'doc', 'txt', 'rtf', 'odt'}
-    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-    if ext not in allowed:
-        return jsonify({"error": f"Unsupported file type: .{ext}"}), 400
-
-    job_id = request.form.get('job_id') or None
-
-    # Use (or create) the shared bulk-upload user so the file has a valid user_id
-    bulk_user = User.query.filter_by(email='bulk@smarthire.internal').first()
-    if not bulk_user:
-        try:
-            bulk_user = User(
-                email='bulk@smarthire.internal',
-                password_hash=bcrypt.generate_password_hash('internal_only').decode('utf-8'),
-                first_name='HR',
-                last_name='Upload',
-                user_type='student'
-            )
-            db.session.add(bulk_user)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            bulk_user = User.query.filter_by(email='bulk@smarthire.internal').first()
-
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
-    safe_name = secure_filename(file.filename)
-    import uuid
-    unique_name = f"hr_{uuid.uuid4().hex[:8]}_{safe_name}"
-    file_path = os.path.join(upload_folder, unique_name)
-    file.save(file_path)
-
-    record = ResumeUpload(
-        user_id=bulk_user.id,
-        job_id=job_id,
-        filename=unique_name,
-        original_filename=file.filename,
-        file_path=file_path,
-        status='pending'
-    )
-    db.session.add(record)
-    db.session.commit()
-
-    return jsonify({"message": f"{file.filename} uploaded successfully.", "upload_id": record.id}), 201
-
-
 @hr_bp.route('/analyze/<upload_id>', methods=['POST'])
 @login_required
 def analyze(upload_id):
