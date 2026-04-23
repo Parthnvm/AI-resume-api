@@ -258,63 +258,80 @@ def dashboard():
 @login_required
 def get_candidates():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
+
+    from app.models import JobDescription
+    from sqlalchemy import or_
+
     # 1. Pagination Parameters
     page = request.args.get('page', 1, type=int)
     limit = request.args.get('limit', 10, type=int)
-    
+
     # 2. Filtering Parameters
     status = request.args.get('status')
-    job_id = request.args.get('job_id')
+    job_id = request.args.get('job_id', '').strip()
     min_score = request.args.get('min_score', type=float)
     search = request.args.get('q', '').strip()
-    
+
     # 3. Sorting Parameters
     sort_by = request.args.get('sort', 'date_desc')
-    
-    query = ResumeUpload.query.options(db.joinedload(ResumeUpload.student), db.joinedload(ResumeUpload.analysis))
-    
+
+    # Base query — always join JobDescription so we can scope to this HR's jobs.
+    # We use an outer join to also include uploads with job_id=NULL (uploaded without a role).
+    query = (
+        ResumeUpload.query
+        .options(db.joinedload(ResumeUpload.student), db.joinedload(ResumeUpload.analysis))
+        .outerjoin(JobDescription, ResumeUpload.job_id == JobDescription.id)
+        .filter(
+            # Include uploads that either belong to this HR's job OR have no job assigned
+            or_(
+                JobDescription.hr_id == current_user.id,
+                ResumeUpload.job_id == None
+            )
+        )
+    )
+
+    # Filter by status
     if status and status in ['pending', 'analyzed', 'shortlisted', 'rejected']:
         query = query.filter(ResumeUpload.status == status)
+
+    # Filter by specific job role — only show uploads for that job
     if job_id:
         query = query.filter(ResumeUpload.job_id == job_id)
-        
+
     if min_score is not None:
-        query = query.join(CandidateAnalysis).filter(CandidateAnalysis.total_score >= min_score)
-        
+        query = query.join(CandidateAnalysis, ResumeUpload.id == CandidateAnalysis.upload_id).filter(
+            CandidateAnalysis.total_score >= min_score
+        )
+
     if search:
-        from sqlalchemy import or_
-        from app.models import User
-        # Search against name or email or extracted text
-        query = query.join(User).filter(
+        from app.models import User as UserModel
+        query = query.join(UserModel, ResumeUpload.user_id == UserModel.id).filter(
             or_(
-                User.first_name.ilike(f'%{search}%'),
-                User.last_name.ilike(f'%{search}%'),
-                User.email.ilike(f'%{search}%'),
+                UserModel.first_name.ilike(f'%{search}%'),
+                UserModel.last_name.ilike(f'%{search}%'),
+                UserModel.email.ilike(f'%{search}%'),
                 ResumeUpload.extracted_email.ilike(f'%{search}%'),
                 ResumeUpload.extracted_education.ilike(f'%{search}%')
             )
         )
-        
+
     if sort_by == 'score_desc':
-        # Need outerjoin to avoid dropping null analyses when sorting by score
-        if min_score is None: 
-            query = query.outerjoin(CandidateAnalysis)
+        if min_score is None:
+            query = query.outerjoin(CandidateAnalysis, ResumeUpload.id == CandidateAnalysis.upload_id)
         query = query.order_by(CandidateAnalysis.total_score.desc().nullslast())
     else:
         query = query.order_by(ResumeUpload.upload_date.desc())
-        
+
     pagination = query.paginate(page=page, per_page=limit, error_out=False)
-    
+
     # Serialize candidates
     candidates_list = []
-    from flask import url_for
+    from app.ai_engine import _strip_batch_prefix
     for c in pagination.items:
         score = c.analysis.total_score if c.analysis else 0
-        from app.ai_engine import _strip_batch_prefix
         reasoning = _strip_batch_prefix(c.analysis.reasoning_summary) if c.analysis else "Not yet analyzed"
-        job_t = c.job.title if hasattr(c, 'job') and c.job else "General Profile"
-        
+        job_t = c.job.title if c.job else "General Profile"
+
         candidates_list.append({
             "id": c.id,
             "filename": c.original_filename,
@@ -332,7 +349,7 @@ def get_candidates():
             "view_url": url_for('hr_bp.view_resume', upload_id=c.id),
             "has_analysis": c.analysis is not None
         })
-        
+
     return jsonify({
         "candidates": candidates_list,
         "total": pagination.total,
@@ -365,16 +382,35 @@ def create_job():
 @login_required
 def hr_stats():
     if current_user.user_type != 'hr': return jsonify({"error": "Unauthorized"}), 403
-    
-    total = ResumeUpload.query.count()
-    pending = ResumeUpload.query.filter_by(status='pending').count()
-    analyzed = ResumeUpload.query.filter_by(status='analyzed').count()
-    shortlisted = ResumeUpload.query.filter_by(status='shortlisted').count()
-    rejected = ResumeUpload.query.filter_by(status='rejected').count()
-    
-    analyses = CandidateAnalysis.query.filter(CandidateAnalysis.total_score != None).all()
+
+    from app.models import JobDescription
+    from sqlalchemy import or_
+
+    # Scope stats to this HR's uploads (own jobs + unassigned uploads)
+    base = (
+        ResumeUpload.query
+        .outerjoin(JobDescription, ResumeUpload.job_id == JobDescription.id)
+        .filter(
+            or_(
+                JobDescription.hr_id == current_user.id,
+                ResumeUpload.job_id == None
+            )
+        )
+    )
+
+    total = base.count()
+    pending = base.filter(ResumeUpload.status == 'pending').count()
+    analyzed = base.filter(ResumeUpload.status == 'analyzed').count()
+    shortlisted = base.filter(ResumeUpload.status == 'shortlisted').count()
+    rejected = base.filter(ResumeUpload.status == 'rejected').count()
+
+    upload_ids = [r.id for r in base.with_entities(ResumeUpload.id).all()]
+    analyses = CandidateAnalysis.query.filter(
+        CandidateAnalysis.upload_id.in_(upload_ids),
+        CandidateAnalysis.total_score != None
+    ).all()
     avg_score = sum(a.total_score for a in analyses) / len(analyses) if analyses else 0
-    
+
     return jsonify({
         "total": total,
         "pending": pending,

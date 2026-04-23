@@ -16,10 +16,10 @@
 |---------|-------------|
 | **AI Resume Analysis** | Gemini → Groq → TF-IDF 3-tier fallback chain; never fails |
 | **Smart Scoring** | Match score, skill score, content score with detailed reasoning |
-| **HR Dashboard** | Paginated candidate board with search, sort, filter, bulk actions |
+| **HR Dashboard** | Paginated candidate board with search, sort, filter by job role, and bulk actions |
 | **Student Portal** | Students upload their own resume and view personalized AI feedback |
 | **Job Board** | HR posts roles; students apply to specific jobs |
-| **Batch Upload** | Drop a ZIP of PDFs — processed in background (Render/Docker) or synchronously (Vercel) |
+| **Batch Upload** | Drop a ZIP of PDFs — processed synchronously on Vercel or in background locally |
 | **Re-analyze** | Re-run AI analysis on any resume with a new job description |
 | **Firebase Auth** | Industry-standard email/password authentication with password reset |
 | **API Key Access** | Every HR account gets a Bearer token for programmatic API access |
@@ -95,7 +95,7 @@ python run.py
 
 ---
 
-## ▲ Deploying to Vercel (Primary)
+## ▲ Deploying to Vercel
 
 ### Prerequisites
 
@@ -137,29 +137,6 @@ python run.py
 
 ---
 
-## 🌍 Deploying to Render.com
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
-
-1. Push your code to GitHub
-2. Go to [render.com](https://render.com) → **New** → **Web Service**
-3. Connect your GitHub repo — Render auto-detects `render.yaml`
-4. In **Environment**, add:
-
-| Variable | Description |
-|----------|-------------|
-| `SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) |
-| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) |
-| `FIREBASE_API_KEY` | Firebase Console → Project Settings → Web API Key |
-
-5. Click **Deploy** — live in ~2 minutes
-
-> [!NOTE]
-> `render.yaml` mounts a **1 GB persistent disk** at `/opt/render/project/src/resumes` so uploaded files survive redeploys.
-
----
-
 ## 🐳 Docker
 
 ```bash
@@ -185,10 +162,9 @@ curl http://localhost:5000/health
 | `GROQ_API_KEY` | ✅ | Groq API key (AI fallback — free tier: 30 RPM) |
 | `FIREBASE_API_KEY` | ✅ | Firebase Web API key for Auth |
 | `FLASK_ENV` | ❌ | `production` or `development` (default: `production`) |
-| `DATABASE_URL` | ✅ on Vercel | PostgreSQL URL. Falls back to SQLite on Render/local |
+| `DATABASE_URL` | ✅ on Vercel | PostgreSQL URL. Falls back to SQLite for local development |
 | `UPLOAD_DIR` | ❌ | Override resume storage path. Auto-set to `/tmp/resumes` on Vercel |
 | `LOG_LEVEL` | ❌ | `DEBUG` / `INFO` / `WARNING`. Default: `INFO` |
-| `PORT` | ❌ | Port for Gunicorn. Auto-set by Render |
 
 ---
 
@@ -216,7 +192,7 @@ All endpoints require `Authorization: Bearer <api_key>` header (except `/health`
 | `page` | int | Page number (default: 1) |
 | `limit` | int | Results per page (default: 10) |
 | `status` | string | `pending` / `analyzed` / `shortlisted` / `rejected` |
-| `job_id` | string | Filter by job UUID |
+| `job_id` | string | Filter by job UUID (scoped to current HR's roles) |
 | `min_score` | float | Minimum AI match score (0–100) |
 | `q` | string | Search by name, email, or education |
 | `sort` | string | `date_desc` (default) or `score_desc` |
@@ -235,10 +211,10 @@ All endpoints require `Authorization: Bearer <api_key>` header (except `/health`
 | AI (fallback) | Groq — Llama 3.3 70B |
 | AI (local fallback) | TF-IDF + scikit-learn |
 | PDF parsing | pypdf + python-docx |
-| WSGI server | Gunicorn (Render/Docker) |
+| WSGI server | Gunicorn (Docker / local) |
 | Database | SQLite (dev/local) / PostgreSQL (Vercel/prod) |
 | Frontend | Tailwind CSS + Alpine.js |
-| Hosting | Vercel (primary) / Render.com / Docker |
+| Hosting | Vercel / Docker |
 
 ---
 
@@ -254,17 +230,17 @@ AI-resume-api/
 │   ├── models.py            # SQLAlchemy models
 │   ├── ai_engine.py         # Gemini + Groq + TF-IDF AI providers
 │   ├── utils.py             # Text extraction, analysis orchestration
-│   ├── tasks.py             # Batch processing (async on Render, sync on Vercel)
+│   ├── tasks.py             # Batch processing (async locally, sync on Vercel)
 │   ├── firebase_auth.py     # Firebase REST auth helpers
 │   ├── logging_config.py    # Structured logging
 │   └── templates/           # Jinja2 HTML templates
+├── resume_screener_api.py   # TF-IDF local fallback engine
 ├── config.py                # Dev / Prod config (IS_VERCEL detection, /tmp paths)
 ├── vercel.json              # Vercel deployment config
 ├── requirements.txt
 ├── .python-version          # Python 3.12
 ├── .env.example             # Environment variable template
-├── .gitignore
-└── not used/                # Archived: Dockerfile, render.yaml, wsgi.py, run.py, etc.
+└── .gitignore
 ```
 
 ---
@@ -275,7 +251,7 @@ AI-resume-api/
 - Passwords stored as bcrypt hashes; Firebase is the password authority for all new accounts
 - File uploads sanitised with `werkzeug.secure_filename` and prefixed with user ID
 - `SECRET_KEY` validated at startup — rejects insecure defaults in production
-- Auth and rate-limiting enforced on all sensitive endpoints
+- Auth enforced on all sensitive endpoints; HR data scoped to the authenticated user
 
 ---
 
