@@ -178,36 +178,45 @@ def allowed_resume_file(filename):
 @student_bp.route('/upload', methods=['POST'])
 @login_required
 def upload():
-    if 'resume' not in request.files:
-        flash('No file part', 'error')
+    files = request.files.getlist('resume')
+    if not files or all(f.filename == '' for f in files):
+        flash('No file selected', 'error')
         return redirect(url_for('student_bp.dashboard'))
-    
-    file = request.files['resume']
-    if file.filename == '':
-        flash('No selected file', 'error')
-        return redirect(url_for('student_bp.dashboard'))
-        
-    if file and allowed_resume_file(file.filename):
-        filename = secure_filename(file.filename)
-        safe_filename = f"{current_user.id}_{filename}"
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], safe_filename)
-        file.save(filepath)
-        
-        job_id = request.form.get('job_id')
-        
-        upload_record = ResumeUpload(
-            user_id=current_user.id,
-            job_id=job_id if job_id else None,
-            filename=safe_filename,
-            original_filename=file.filename,
-            file_path=filepath
-        )
-        db.session.add(upload_record)
+
+    job_id = request.form.get('job_id') or None
+    saved = 0
+    skipped = 0
+
+    for file in files:
+        if not file or file.filename == '':
+            continue
+        if allowed_resume_file(file.filename):
+            filename = secure_filename(file.filename)
+            safe_filename = f"{current_user.id}_{filename}"
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], safe_filename)
+            file.save(filepath)
+
+            upload_record = ResumeUpload(
+                user_id=current_user.id,
+                job_id=job_id if job_id else None,
+                filename=safe_filename,
+                original_filename=file.filename,
+                file_path=filepath
+            )
+            db.session.add(upload_record)
+            saved += 1
+        else:
+            skipped += 1
+
+    if saved > 0:
         db.session.commit()
-        flash('Resume submitted successfully!', 'success')
+        msg = f'{saved} resume{"s" if saved > 1 else ""} submitted successfully!'
+        if skipped:
+            msg += f' ({skipped} unsupported file{"s" if skipped > 1 else ""} skipped.)'
+        flash(msg, 'success')
     else:
-        flash('Unsupported file format. Please upload PDF, DOCX, DOC, TXT, RTF, or ODT.', 'error')
-        
+        flash('No valid files uploaded. Please use PDF, DOCX, DOC, TXT, RTF, or ODT.', 'error')
+
     return redirect(url_for('student_bp.dashboard'))
 
 @student_bp.route('/api/insights/<upload_id>')
