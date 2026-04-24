@@ -675,7 +675,7 @@
             
             async fetchStats() {
                 try {
-                    const res = await fetch('/hr/api/stats');
+                    const res = await fetch('/hr/api/stats', { cache: 'no-store' });
                     if(res.ok) this.stats = await res.json();
                 } catch(e) { console.error("Could not fetch stats", e); }
             },
@@ -692,7 +692,7 @@
                         ...(this.searchQuery && {q: this.searchQuery})
                     });
                     
-                    const res = await fetch(`/hr/api/candidates?${params.toString()}`);
+                    const res = await fetch(`/hr/api/candidates?${params.toString()}`, { cache: 'no-store' });
                     if(res.ok) {
                         const data = await res.json();
                         this.candidates = data.candidates;
@@ -874,7 +874,7 @@
                     const res = await fetch('/hr/bulk_action', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ids: this.selectedCandidates, action: action })
+                        body: JSON.stringify({ candidate_ids: this.selectedCandidates, action: action })
                     });
                     const data = await res.json();
                     if (res.ok) {
