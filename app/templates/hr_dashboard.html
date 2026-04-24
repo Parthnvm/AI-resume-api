@@ -738,6 +738,18 @@
             openAnalyze(id) {
                 this.activeUploadId = id;
                 this.jdText = '';
+                // Immediately clear the old result from the card so the UI
+                // never shows a stale score while the new analysis is running.
+                const idx = this.candidates.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                    this.candidates[idx] = {
+                        ...this.candidates[idx],
+                        has_analysis: false,
+                        score: 0,
+                        reasoning: '',
+                        status: 'pending'
+                    };
+                }
                 this.showAnalyzeModal = true;
             },
 

@@ -473,11 +473,11 @@ def analyze(upload_id):
     text = extract_text(upload.file_path)
     
     # On Vercel, /tmp is ephemeral — the PDF may be gone after a cold start.
-    # Fall back to the cached reasoning text from a prior analysis so re-analysis still works.
+    # Capture the fallback text BEFORE we delete the old record below.
     if not text:
-        existing = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
-        if existing and existing.reasoning_summary:
-            text = existing.reasoning_summary  # use cached extracted reasoning as proxy text
+        existing_for_fallback = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
+        if existing_for_fallback and existing_for_fallback.reasoning_summary:
+            text = existing_for_fallback.reasoning_summary
     
     req_data = request.get_json(force=True, silent=True) or {}
     custom_jd = req_data.get('job_description', '').strip()
@@ -485,14 +485,21 @@ def analyze(upload_id):
     if not text:
         return jsonify({"error": "Resume file not found. Please re-upload the resume before analyzing."}), 400
 
-        
+    # ── Delete old analysis first so we always write a fresh record ──────────
+    # This prevents SQLAlchemy session caching from ever returning stale scores.
+    old_analysis = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
+    if old_analysis:
+        db.session.delete(old_analysis)
+        upload.status = 'pending'
+        db.session.commit()
+    # ─────────────────────────────────────────────────────────────────────────
+
     try:
         result = analyze_single_resume(text, upload.original_filename, custom_jd)
         
-        analysis = CandidateAnalysis.query.filter_by(upload_id=upload.id).first()
-        if not analysis:
-            analysis = CandidateAnalysis(upload_id=upload.id)
-            db.session.add(analysis)
+        # Always create a brand-new analysis record
+        analysis = CandidateAnalysis(upload_id=upload.id)
+        db.session.add(analysis)
             
         analysis.total_score = result.get('match_score', 0)
         analysis.technical_skills_score = result.get('skill_score', 0)
